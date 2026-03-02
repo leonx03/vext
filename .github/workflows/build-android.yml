@@ -30,7 +30,7 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/v}"
             echo "environment=production" >> "$GITHUB_OUTPUT"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" || ( "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/master" ) ]]; then
             echo "environment=staging" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
           else
