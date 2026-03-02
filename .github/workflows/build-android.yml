@@ -94,6 +94,20 @@ jobs:
             console.log('Set version ' + process.env.VERSION + ' (code ' + process.env.VERSION_CODE + ')');
           "
 
+      # ── Staging app ID (staging only) ──
+      - name: Set staging application ID
+        if: steps.env.outputs.environment == 'staging'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            config.expo.name = 'Vext Staging';
+            config.expo.android = config.expo.android || {};
+            config.expo.android.package = 'com.anonymous.vext.staging';
+            fs.writeFileSync('app.json', JSON.stringify(config, null, 2) + '\n');
+            console.log('Set staging app ID: com.anonymous.vext.staging');
+          "
+
       # ── Generate native project ──
       - name: Expo prebuild
         run: npx expo prebuild --platform android --clean
