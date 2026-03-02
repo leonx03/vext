@@ -1,5 +1,5 @@
 /** Active workout screen - log sets, manage exercises, and complete/discard a workout. */
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActiveWorkoutHeader } from '@frontend/components/workout/ActiveWorkoutHeader';
@@ -54,12 +54,11 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
   const updateTargetReps = useUpdateExerciseTargetReps(id);
   const updateElapsed = useUpdateElapsedSeconds(id);
 
-  const handleSaveElapsed = useCallback(
-    (seconds: number) => updateElapsed.mutate(seconds),
-    [updateElapsed]
+  const { elapsed, clear: clearTimer } = useWorkoutTimer(
+    id,
+    workout.elapsedSeconds,
+    (seconds) => updateElapsed.mutate(seconds)
   );
-
-  const { elapsed, clear: clearTimer } = useWorkoutTimer(id, workout.elapsedSeconds, handleSaveElapsed);
 
   const optimisticOrder = useExerciseOrderStore((s) => s.orders[id]);
   const setOrder = useExerciseOrderStore((s) => s.setOrder);
@@ -90,9 +89,8 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
       await completeWorkout.mutateAsync(id);
       clearTimer(id);
       router.replace('/(tabs)/workouts');
-    } catch (e) {
+    } catch {
       // mutation errors shown inline via completeWorkout.error
-      if (__DEV__) console.warn('Complete workout failed:', e);
     }
   };
 

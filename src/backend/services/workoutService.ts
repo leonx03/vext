@@ -17,7 +17,7 @@ export async function updateElapsedSeconds(
   workoutId: string,
   seconds: number
 ): Promise<void> {
-  await workout.updateElapsedSeconds(db, workoutId, seconds);
+  await workout.updateElapsedSeconds(db, workoutId, Math.max(0, seconds));
 }
 
 export async function startWorkout(
