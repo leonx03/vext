@@ -12,6 +12,14 @@ import type { WorkoutSetInput } from '@backend/models/workoutSet';
 import type { Workout, WorkoutExercise, WorkoutSet, WorkoutFull, WorkoutSummary } from '@shared/types/workout';
 import { WorkoutStatus } from '@shared/types/workout';
 
+export async function updateElapsedSeconds(
+  db: SQLite.SQLiteDatabase,
+  workoutId: string,
+  seconds: number
+): Promise<void> {
+  await workout.updateElapsedSeconds(db, workoutId, seconds);
+}
+
 export async function startWorkout(
   db: SQLite.SQLiteDatabase,
   typeId: string,

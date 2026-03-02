@@ -29,6 +29,7 @@ export interface Workout {
   completedAt: string | null;
   notes: string | null;
   createdAt: string;
+  elapsedSeconds: number;
 }
 
 export interface WorkoutExercise {

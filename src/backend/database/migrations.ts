@@ -92,6 +92,12 @@ const migrations: Migration[] = [
       ALTER TABLE workout_exercises ADD COLUMN target_reps_max INTEGER DEFAULT NULL;
     `);
   },
+  // v3 -> v4: Track time spent in workout screen
+  async (db) => {
+    await db.execAsync(`
+      ALTER TABLE workouts ADD COLUMN elapsed_seconds INTEGER NOT NULL DEFAULT 0;
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

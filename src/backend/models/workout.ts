@@ -12,6 +12,7 @@ interface WorkoutRow {
   completed_at: string | null;
   notes: string | null;
   created_at: string;
+  elapsed_seconds: number;
 }
 
 function mapRow(row: WorkoutRow): Workout {
@@ -24,7 +25,20 @@ function mapRow(row: WorkoutRow): Workout {
     completedAt: row.completed_at,
     notes: row.notes,
     createdAt: row.created_at,
+    elapsedSeconds: row.elapsed_seconds,
   };
+}
+
+export async function updateElapsedSeconds(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  seconds: number
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE workouts SET elapsed_seconds = ? WHERE id = ?`,
+    seconds,
+    id
+  );
 }
 
 export async function create(
