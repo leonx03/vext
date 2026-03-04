@@ -126,9 +126,9 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
           <Pressable onPress={onStartRest} className="w-10 h-10 items-center justify-center rounded-lg bg-background-100">
             <Ionicons name="timer-outline" size={18} color="rgb(163, 163, 163)" />
           </Pressable>
-        ) : (
+        ) : !hideSetNumber ? (
           <View className="w-10" />
-        )}
+        ) : null}
 
         {onRemove && (
           <Pressable onPress={onRemove} className="w-8 h-8 items-center justify-center">

@@ -222,6 +222,9 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
                 onUpdateRestSeconds={(seconds) =>
                   updateSupersetRest.mutate({ groupId: item.groupId, restSeconds: seconds })
                 }
+                onUpdateTargetReps={(workoutExerciseId, min, max) =>
+                  updateTargetReps.mutate({ workoutExerciseId, targetRepsMin: min, targetRepsMax: max })
+                }
                 onStartRest={() => startTimer(group.restSeconds)}
               />
             );

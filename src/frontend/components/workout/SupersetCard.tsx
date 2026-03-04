@@ -1,10 +1,25 @@
 /** SupersetCard - merged card for a superset group with multiple exercises logged per round. */
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SetRow } from './SetRow';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import type { WorkoutExerciseFull, WorkoutSet, SupersetGroup } from '@shared/types/workout';
+
+function parseRepRange(input: string): { min: number | null; max: number | null } {
+  const trimmed = input.trim();
+  if (!trimmed) return { min: null, max: null };
+  const rangeMatch = trimmed.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (rangeMatch) return { min: parseInt(rangeMatch[1], 10), max: parseInt(rangeMatch[2], 10) };
+  const singleMatch = trimmed.match(/^(\d+)$/);
+  if (singleMatch) { const val = parseInt(singleMatch[1], 10); return { min: val, max: val }; }
+  return { min: null, max: null };
+}
+
+function formatRepRange(min: number | null, max: number | null): string {
+  if (min == null || max == null) return '';
+  return min === max ? `${min}` : `${min}-${max}`;
+}
 
 type SupersetCardProps = {
   group: SupersetGroup;
@@ -20,6 +35,7 @@ type SupersetCardProps = {
   onAddExercise: () => void;
   onDisband: () => void;
   onUpdateRestSeconds: (seconds: number) => void;
+  onUpdateTargetReps: (workoutExerciseId: string, min: number | null, max: number | null) => void;
   onStartRest: () => void;
 };
 
@@ -37,21 +53,41 @@ export const SupersetCard = React.memo(function SupersetCard({
   onAddExercise,
   onDisband,
   onUpdateRestSeconds,
+  onUpdateTargetReps,
   onStartRest,
 }: SupersetCardProps) {
   const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
   const [localRestSeconds, setLocalRestSeconds] = useState(group.restSeconds);
+  const [showRepGoalDialog, setShowRepGoalDialog] = useState(false);
+  const [repGoalInputs, setRepGoalInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(exercises.map((ex) => [ex.id, formatRepRange(ex.targetRepsMin, ex.targetRepsMax)]))
+  );
 
   useEffect(() => {
     setLocalRestSeconds(group.restSeconds);
   }, [group.restSeconds]);
+
+  useEffect(() => {
+    setRepGoalInputs(
+      Object.fromEntries(exercises.map((ex) => [ex.id, formatRepRange(ex.targetRepsMin, ex.targetRepsMax)]))
+    );
+  }, [exercises]);
 
   const handleUpdateRest = (newVal: number) => {
     setLocalRestSeconds(newVal);
     onUpdateRestSeconds(newVal);
   };
 
+  const handleSaveRepGoals = () => {
+    exercises.forEach((ex) => {
+      const { min, max } = parseRepRange(repGoalInputs[ex.id] ?? '');
+      onUpdateTargetReps(ex.id, min, max);
+    });
+    setShowRepGoalDialog(false);
+  };
+
+  const hasAnyRepGoal = exercises.some((ex) => ex.targetRepsMin != null);
   const numRounds = Math.max(0, ...exercises.map((ex) => ex.sets.length));
 
   return (
@@ -76,7 +112,7 @@ export const SupersetCard = React.memo(function SupersetCard({
       </View>
 
       {/* Badges row */}
-      <View className="flex-row items-center gap-2 mb-3">
+      <View className="flex-row items-center gap-2 mb-3 flex-wrap">
         <Pressable
           onPress={() => setEditingRest(!editingRest)}
           className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
@@ -86,6 +122,18 @@ export const SupersetCard = React.memo(function SupersetCard({
             {localRestSeconds === 0 ? 'No rest' : `${localRestSeconds}s rest`}
           </Text>
         </Pressable>
+
+        {isStrength && (
+          <Pressable
+            onPress={() => setShowRepGoalDialog(true)}
+            className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+          >
+            <Ionicons name="fitness-outline" size={14} color="rgb(163, 163, 163)" />
+            <Text className="ml-1 text-xs text-foreground-muted">
+              {hasAnyRepGoal ? 'Rep Goals' : 'Set rep goals'}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Rest editor */}
@@ -124,7 +172,6 @@ export const SupersetCard = React.memo(function SupersetCard({
               <Text className="flex-1 text-center text-xs text-foreground-subtle">Distance</Text>
             </>
           )}
-          <View className="w-10" />
         </View>
       )}
 
@@ -238,6 +285,52 @@ export const SupersetCard = React.memo(function SupersetCard({
         }}
         onCancel={() => setShowDisbandConfirm(false)}
       />
+
+      {/* Rep goal dialog */}
+      <Modal
+        visible={showRepGoalDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRepGoalDialog(false)}
+      >
+        <Pressable
+          className="flex-1 items-center justify-center bg-black/60"
+          onPress={() => setShowRepGoalDialog(false)}
+        >
+          <Pressable
+            className="mx-8 w-full max-w-sm rounded-2xl bg-background-50 p-6"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-foreground mb-4">Rep Goals</Text>
+            {exercises.map((ex) => (
+              <View key={ex.id} className="mb-3">
+                <Text className="text-xs font-medium text-foreground-muted mb-1">{ex.exerciseName}</Text>
+                <TextInput
+                  className="h-10 rounded-lg bg-background-100 px-3 text-sm text-foreground"
+                  placeholder="e.g. 8-12"
+                  placeholderTextColor="rgb(115, 115, 115)"
+                  value={repGoalInputs[ex.id] ?? ''}
+                  onChangeText={(v) => setRepGoalInputs((prev) => ({ ...prev, [ex.id]: v }))}
+                />
+              </View>
+            ))}
+            <View className="mt-2 flex-row justify-end gap-3">
+              <Pressable
+                onPress={() => setShowRepGoalDialog(false)}
+                className="rounded-lg border border-background-100 px-4 py-2.5"
+              >
+                <Text className="text-sm font-medium text-foreground-muted">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveRepGoals}
+                className="rounded-lg bg-primary px-4 py-2.5"
+              >
+                <Text className="text-sm font-semibold text-background">Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 });
