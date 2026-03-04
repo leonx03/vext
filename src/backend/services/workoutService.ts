@@ -176,6 +176,13 @@ export async function makeSuperset(
   await workoutExercise.assignToSuperset(db, existingWorkoutExerciseId, group.id, 1);
   const newEx = await addExerciseToWorkout(db, workoutId, newExerciseId);
   await workoutExercise.assignToSuperset(db, newEx.id, group.id, 2);
+
+  // Pre-create empty sets for the new exercise to match existing rounds
+  const existingSets = await workoutSet.getByWorkoutExercise(db, existingWorkoutExerciseId);
+  for (let i = 0; i < existingSets.length; i++) {
+    await workoutSet.add(db, newEx.id);
+  }
+
   return group;
 }
 
