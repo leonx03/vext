@@ -262,6 +262,28 @@ export async function getWorkoutSummaries(
     offset
   );
 
+  if (rows.length === 0) return [];
+
+  // Batch-fetch muscle group set counts for all returned workouts
+  const workoutIds = rows.map((r) => r.id);
+  const placeholders = workoutIds.map(() => '?').join(', ');
+  const muscleRows = await db.getAllAsync<{ workout_id: string; muscle_group: string; set_count: number }>(
+    `SELECT we.workout_id, jm.value AS muscle_group, COUNT(ws.id) AS set_count
+     FROM workout_exercises we
+     JOIN exercises e ON e.id = we.exercise_id
+     JOIN json_each(e.primary_muscles) jm
+     JOIN workout_sets ws ON ws.workout_exercise_id = we.id
+     WHERE we.workout_id IN (${placeholders})
+     GROUP BY we.workout_id, jm.value`,
+    ...workoutIds
+  );
+
+  const muscleMap = new Map<string, Record<string, number>>();
+  for (const mr of muscleRows) {
+    if (!muscleMap.has(mr.workout_id)) muscleMap.set(mr.workout_id, {});
+    muscleMap.get(mr.workout_id)![mr.muscle_group] = mr.set_count;
+  }
+
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
@@ -273,6 +295,7 @@ export async function getWorkoutSummaries(
     setCount: row.set_count,
     totalVolume: row.total_volume ?? 0,
     elapsedSeconds: row.elapsed_seconds,
+    muscleGroupSets: muscleMap.get(row.id) ?? {},
   }));
 }
 
@@ -308,9 +331,10 @@ export async function repeatWorkout(
 
 export async function getPreviousSetsForExercises(
   db: SQLite.SQLiteDatabase,
-  exerciseIds: string[]
+  exerciseIds: string[],
+  workoutTypeId?: string
 ): Promise<Map<string, WorkoutSet[]>> {
-  return workoutSet.getLatestSetsForExercises(db, exerciseIds);
+  return workoutSet.getLatestSetsForExercises(db, exerciseIds, workoutTypeId);
 }
 
 export async function getFullWorkoutsByIds(

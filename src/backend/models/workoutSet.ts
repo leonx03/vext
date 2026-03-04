@@ -158,11 +158,13 @@ export async function getByWorkout(
 
 /**
  * Returns all sets from the most recent completed workout containing the given exercise.
+ * If workoutTypeId is provided, restricts to workouts of that type.
  * Used to show "Last time" reference data on ExerciseCard.
  */
 export async function getLatestSetsForExercise(
   db: SQLite.SQLiteDatabase,
-  exerciseId: string
+  exerciseId: string,
+  workoutTypeId?: string
 ): Promise<WorkoutSet[]> {
   const rows = await db.getAllAsync<WorkoutSetRow>(
     `SELECT ws.*
@@ -171,8 +173,9 @@ export async function getLatestSetsForExercise(
      JOIN workouts w ON w.id = we.workout_id
      WHERE we.exercise_id = ?
        AND w.status = 'completed'
+       ${workoutTypeId ? "AND w.workout_type_id = ?" : ""}
      ORDER BY w.completed_at DESC, ws.set_number ASC`,
-    exerciseId
+    ...(workoutTypeId ? [exerciseId, workoutTypeId] : [exerciseId])
   );
   if (rows.length === 0) return [];
   // All rows are ordered by completed_at DESC — take only sets from the most recent workout
@@ -184,11 +187,13 @@ export async function getLatestSetsForExercise(
 
 /**
  * Batch version: returns previous sets for multiple exercises at once.
+ * If workoutTypeId is provided, restricts to workouts of that type.
  * Returns a Map keyed by exerciseId.
  */
 export async function getLatestSetsForExercises(
   db: SQLite.SQLiteDatabase,
-  exerciseIds: string[]
+  exerciseIds: string[],
+  workoutTypeId?: string
 ): Promise<Map<string, WorkoutSet[]>> {
   const result = new Map<string, WorkoutSet[]>();
   if (exerciseIds.length === 0) return result;
@@ -196,7 +201,7 @@ export async function getLatestSetsForExercises(
   // Fetch in parallel
   await Promise.all(
     exerciseIds.map(async (eid) => {
-      const sets = await getLatestSetsForExercise(db, eid);
+      const sets = await getLatestSetsForExercise(db, eid, workoutTypeId);
       if (sets.length > 0) result.set(eid, sets);
     })
   );

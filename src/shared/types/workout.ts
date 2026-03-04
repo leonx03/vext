@@ -82,6 +82,7 @@ export interface WorkoutSummary {
   setCount: number;
   totalVolume: number;
   elapsedSeconds: number;
+  muscleGroupSets: Record<string, number>;
 }
 
 /** Grouped repeated workouts for history list */

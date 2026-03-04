@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { WorkoutSummary } from '@shared/types/workout';
 import { formatDate, formatDuration, formatVolume, parseUTCTimestamp } from '@shared/utils/formatting';
 import { useSettingsStore } from '@backend/store/settingsStore';
+import { MUSCLE_GROUP_LABELS } from '@shared/constants/muscleGroups';
+import type { MuscleGroup } from '@shared/types/exercise';
 
 type WorkoutCardProps = {
   workout: WorkoutSummary;
@@ -40,6 +42,24 @@ export function WorkoutCard({ workout, onPress, onRepeat, onContinue, onDelete, 
           <Text className="text-xs font-medium text-primary">{workout.workoutTypeName}</Text>
         </View>
       </View>
+
+      {Object.keys(workout.muscleGroupSets).length > 0 && (
+        <View className="mt-3">
+          <Text className="mb-1.5 text-xs text-foreground-subtle">Sets done</Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {Object.entries(workout.muscleGroupSets)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 4)
+              .map(([muscle, count]) => (
+                <View key={muscle} className="flex-row items-center rounded-full bg-background-100 px-2 py-0.5">
+                  <Text className="text-xs text-foreground-muted">
+                    {MUSCLE_GROUP_LABELS[muscle as MuscleGroup] ?? muscle} x{count}
+                  </Text>
+                </View>
+              ))}
+          </View>
+        </View>
+      )}
 
       <View className="mt-3 flex-row items-start">
         <View className="flex-1 gap-1.5">
