@@ -36,6 +36,7 @@ type SupersetCardProps = {
   onDisband: () => void;
   onUpdateRestSeconds: (seconds: number) => void;
   onUpdateTargetReps: (workoutExerciseId: string, min: number | null, max: number | null) => void;
+  onLogSet: (workoutExerciseId: string, data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
   onStartRest: () => void;
 };
 
@@ -54,6 +55,7 @@ export const SupersetCard = React.memo(function SupersetCard({
   onDisband,
   onUpdateRestSeconds,
   onUpdateTargetReps,
+  onLogSet,
   onStartRest,
 }: SupersetCardProps) {
   const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
@@ -186,7 +188,15 @@ export const SupersetCard = React.memo(function SupersetCard({
                     onSave={(data) => onSaveSet(set.id, data)}
                   />
                 ) : (
-                  <View className="h-10" />
+                  <SetRow
+                    setNumber={roundIndex + 1}
+                    isStrength={isStrength}
+                    targetRepsMin={ex.targetRepsMin}
+                    targetRepsMax={ex.targetRepsMax}
+                    restSeconds={0}
+                    hideSetNumber
+                    onSave={(data) => onLogSet(ex.id, data)}
+                  />
                 )}
               </View>
             );

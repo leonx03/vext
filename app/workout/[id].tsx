@@ -225,6 +225,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
                 onUpdateTargetReps={(workoutExerciseId: string, min: number | null, max: number | null) =>
                   updateTargetReps.mutate({ workoutExerciseId, targetRepsMin: min, targetRepsMax: max })
                 }
+                onLogSet={(workoutExerciseId, data) => logSet.mutate({ workoutExerciseId, data })}
                 onStartRest={() => startTimer(group.restSeconds)}
               />
             );
