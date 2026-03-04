@@ -40,6 +40,7 @@ type ExerciseCardProps = {
   onUpdateRestSeconds: (seconds: number) => void;
   onUpdateTargetReps: (min: number | null, max: number | null) => void;
   onStartRest?: () => void;
+  onMakeSuperset?: () => void;
 };
 
 export const ExerciseCard = React.memo(function ExerciseCard({
@@ -55,6 +56,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   onUpdateRestSeconds,
   onUpdateTargetReps,
   onStartRest,
+  onMakeSuperset,
 }: ExerciseCardProps) {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
@@ -103,7 +105,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
       </View>
 
       {/* Badges row */}
-      <View className="flex-row items-center gap-2 mb-2">
+      <View className="flex-row items-center gap-2 mb-2 flex-wrap">
         {/* Rest time badge */}
         <Pressable
           onPress={() => setEditingRest(!editingRest)}
@@ -127,6 +129,17 @@ export const ExerciseCard = React.memo(function ExerciseCard({
               : 'Set rep goal'}
           </Text>
         </Pressable>
+
+        {/* Make Superset badge */}
+        {onMakeSuperset && (
+          <Pressable
+            onPress={onMakeSuperset}
+            className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+          >
+            <Ionicons name="layers-outline" size={14} color="rgb(163, 163, 163)" />
+            <Text className="ml-1 text-xs text-foreground-muted">Make Superset</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Rest time editor */}

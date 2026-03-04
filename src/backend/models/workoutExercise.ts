@@ -16,6 +16,8 @@ interface WorkoutExerciseRow {
   target_reps_max: number | null;
   notes: string | null;
   created_at: string;
+  superset_group_id: string | null;
+  superset_position: number | null;
 }
 
 interface WorkoutExerciseFullRow extends WorkoutExerciseRow {
@@ -34,6 +36,8 @@ function mapRow(row: WorkoutExerciseRow): WorkoutExercise {
     targetRepsMax: row.target_reps_max,
     notes: row.notes,
     createdAt: row.created_at,
+    supersetGroupId: row.superset_group_id,
+    supersetPosition: row.superset_position,
   };
 }
 
@@ -137,6 +141,59 @@ export async function updateTargetReps(
     targetRepsMax,
     id
   );
+}
+
+export async function getById(
+  db: SQLite.SQLiteDatabase,
+  id: string
+): Promise<WorkoutExercise | null> {
+  const row = await db.getFirstAsync<WorkoutExerciseRow>(
+    `SELECT * FROM workout_exercises WHERE id = ?`,
+    id
+  );
+  return row ? mapRow(row) : null;
+}
+
+export async function assignToSuperset(
+  db: SQLite.SQLiteDatabase,
+  workoutExerciseId: string,
+  groupId: string,
+  position: number
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE workout_exercises SET superset_group_id = ?, superset_position = ? WHERE id = ?`,
+    groupId,
+    position,
+    workoutExerciseId
+  );
+}
+
+export async function removeFromSuperset(
+  db: SQLite.SQLiteDatabase,
+  workoutExerciseId: string
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE workout_exercises SET superset_group_id = NULL, superset_position = NULL WHERE id = ?`,
+    workoutExerciseId
+  );
+}
+
+export async function getBySuperset(
+  db: SQLite.SQLiteDatabase,
+  groupId: string
+): Promise<WorkoutExerciseFull[]> {
+  const rows = await db.getAllAsync<WorkoutExerciseFullRow>(
+    `SELECT
+       we.*,
+       e.name AS exercise_name,
+       e.category AS exercise_category
+     FROM workout_exercises we
+     JOIN exercises e ON e.id = we.exercise_id
+     WHERE we.superset_group_id = ?
+     ORDER BY we.superset_position`,
+    groupId
+  );
+  return rows.map(mapFullRow);
 }
 
 export async function reorder(

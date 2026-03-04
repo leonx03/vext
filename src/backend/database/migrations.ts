@@ -136,6 +136,22 @@ const migrations: Migration[] = [
       }
     }
   },
+  // v6 -> v7: Add superset groups to allow grouping exercises into supersets
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS superset_groups (
+        id TEXT PRIMARY KEY,
+        workout_id TEXT NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
+        rest_seconds INTEGER NOT NULL DEFAULT 90,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      ALTER TABLE workout_exercises ADD COLUMN superset_group_id TEXT REFERENCES superset_groups(id);
+      ALTER TABLE workout_exercises ADD COLUMN superset_position INTEGER;
+
+      CREATE INDEX IF NOT EXISTS idx_workout_exercises_superset ON workout_exercises(superset_group_id);
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

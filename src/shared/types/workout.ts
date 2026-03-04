@@ -1,4 +1,4 @@
-/** Workout types - TypeScript interfaces for Workout, WorkoutExercise, WorkoutSet, and related types. */
+/** Workout types - TypeScript interfaces for Workout, WorkoutExercise, WorkoutSet, SupersetGroup, and related types. */
 export enum WorkoutStatus {
   InProgress = 'in_progress',
   Completed = 'completed',
@@ -34,6 +34,13 @@ export interface Workout {
   lastStartedAt: string | null;
 }
 
+export interface SupersetGroup {
+  id: string;
+  workoutId: string;
+  restSeconds: number;
+  createdAt: string;
+}
+
 export interface WorkoutExercise {
   id: string;
   workoutId: string;
@@ -44,6 +51,8 @@ export interface WorkoutExercise {
   targetRepsMax: number | null;
   notes: string | null;
   createdAt: string;
+  supersetGroupId: string | null;
+  supersetPosition: number | null;
 }
 
 export interface WorkoutSet {
@@ -63,6 +72,7 @@ export interface WorkoutSet {
 export interface WorkoutFull extends Workout {
   workoutType: WorkoutType;
   exercises: WorkoutExerciseFull[];
+  supersetGroups: SupersetGroup[];
 }
 
 export interface WorkoutExerciseFull extends WorkoutExercise {
