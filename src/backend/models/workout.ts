@@ -13,6 +13,7 @@ interface WorkoutRow {
   notes: string | null;
   created_at: string;
   elapsed_seconds: number;
+  last_started_at: string | null;
 }
 
 function mapRow(row: WorkoutRow): Workout {
@@ -26,6 +27,7 @@ function mapRow(row: WorkoutRow): Workout {
     notes: row.notes,
     createdAt: row.created_at,
     elapsedSeconds: row.elapsed_seconds,
+    lastStartedAt: row.last_started_at,
   };
 }
 
@@ -48,8 +50,8 @@ export async function create(
 ): Promise<Workout> {
   const id = Crypto.randomUUID();
   await db.runAsync(
-    `INSERT INTO workouts (id, workout_type_id, name, status, started_at, created_at)
-     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+    `INSERT INTO workouts (id, workout_type_id, name, status, started_at, last_started_at, created_at)
+     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))`,
     id,
     workoutTypeId,
     name ?? null,
@@ -86,7 +88,11 @@ export async function complete(
   id: string
 ): Promise<void> {
   await db.runAsync(
-    `UPDATE workouts SET status = ?, completed_at = datetime('now') WHERE id = ?`,
+    `UPDATE workouts
+     SET status = ?,
+         completed_at = datetime('now'),
+         elapsed_seconds = elapsed_seconds + MAX(0, CAST((julianday('now') - julianday(COALESCE(last_started_at, started_at))) * 86400 AS INTEGER))
+     WHERE id = ?`,
     WorkoutStatus.Completed,
     id
   );
@@ -97,7 +103,7 @@ export async function reopen(
   id: string
 ): Promise<void> {
   await db.runAsync(
-    `UPDATE workouts SET status = ?, completed_at = NULL WHERE id = ?`,
+    `UPDATE workouts SET status = ?, completed_at = NULL, last_started_at = datetime('now') WHERE id = ?`,
     WorkoutStatus.InProgress,
     id
   );

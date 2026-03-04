@@ -98,6 +98,13 @@ const migrations: Migration[] = [
       ALTER TABLE workouts ADD COLUMN elapsed_seconds INTEGER NOT NULL DEFAULT 0;
     `);
   },
+  // v4 -> v5: Track last session start for accurate elapsed time across continues
+  async (db) => {
+    await db.execAsync(`
+      ALTER TABLE workouts ADD COLUMN last_started_at TEXT;
+      UPDATE workouts SET last_started_at = started_at;
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

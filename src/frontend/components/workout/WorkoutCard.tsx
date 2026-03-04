@@ -17,9 +17,11 @@ type WorkoutCardProps = {
 
 export function WorkoutCard({ workout, onPress, onRepeat, onContinue, onDelete, sessionCount }: WorkoutCardProps) {
   const units = useSettingsStore((s) => s.units);
-  const duration = workout.completedAt
-    ? Math.floor((parseUTCTimestamp(workout.completedAt).getTime() - parseUTCTimestamp(workout.startedAt).getTime()) / 1000)
-    : 0;
+  const duration = workout.elapsedSeconds > 0
+    ? workout.elapsedSeconds
+    : workout.completedAt
+      ? Math.floor((parseUTCTimestamp(workout.completedAt).getTime() - parseUTCTimestamp(workout.startedAt).getTime()) / 1000)
+      : 0;
 
   return (
     <Pressable onPress={onPress} className="mb-3 rounded-xl bg-background-50 p-4">
