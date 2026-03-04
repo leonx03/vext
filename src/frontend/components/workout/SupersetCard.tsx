@@ -131,27 +131,33 @@ export const SupersetCard = React.memo(function SupersetCard({
       {/* Rounds */}
       {Array.from({ length: numRounds }).map((_, roundIndex) => (
         <View key={roundIndex} className="mb-2">
-          <Text className="text-xs font-semibold text-foreground-subtle mb-1 ml-1">
-            Round {roundIndex + 1}
-          </Text>
-
-          {exercises.map((ex) => {
+          {exercises.map((ex, exIndex) => {
             const set = ex.sets[roundIndex];
             const firstPreviousSet = previousSetsMap.get(ex.exerciseId)?.[0];
 
+            const exerciseLabel = (
+              <Text className="text-xs font-medium text-foreground-muted flex-1 mb-0.5">
+                {ex.exerciseName}
+                {firstPreviousSet ? (
+                  <Text className="text-foreground-subtle">
+                    {isStrength
+                      ? ` - last: ${firstPreviousSet.weightKg ?? 0}kg × ${firstPreviousSet.reps ?? 0}`
+                      : ` - last: ${firstPreviousSet.durationSeconds ?? 0}s${firstPreviousSet.distanceMeters != null ? ` · ${firstPreviousSet.distanceMeters}m` : ''}`}
+                  </Text>
+                ) : null}
+              </Text>
+            );
+
             return (
               <View key={ex.id}>
-                {/* Exercise label + last time inline with dash */}
-                <Text className="text-xs font-medium text-foreground-muted mb-0.5">
-                  {ex.exerciseName}
-                  {firstPreviousSet ? (
-                    <Text className="text-foreground-subtle">
-                      {isStrength
-                        ? ` - last: ${firstPreviousSet.weightKg ?? 0}kg × ${firstPreviousSet.reps ?? 0}`
-                        : ` - last: ${firstPreviousSet.durationSeconds ?? 0}s${firstPreviousSet.distanceMeters != null ? ` · ${firstPreviousSet.distanceMeters}m` : ''}`}
-                    </Text>
-                  ) : null}
-                </Text>
+                {exIndex === 0 ? (
+                  <View className="flex-row items-center gap-2 mb-0.5">
+                    <Text className="text-sm font-bold text-foreground">Round {roundIndex + 1}</Text>
+                    {exerciseLabel}
+                  </View>
+                ) : (
+                  exerciseLabel
+                )}
 
                 {set ? (
                   <SetRow
