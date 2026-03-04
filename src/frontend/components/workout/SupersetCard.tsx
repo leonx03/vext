@@ -112,7 +112,6 @@ export const SupersetCard = React.memo(function SupersetCard({
       {/* Global column header */}
       {numRounds > 0 && (
         <View className="flex-row items-center py-1 gap-2 mb-1">
-          <View className="w-8" />
           {isStrength ? (
             <>
               <Text className="flex-1 text-center text-xs text-foreground-subtle">Weight</Text>
@@ -126,7 +125,6 @@ export const SupersetCard = React.memo(function SupersetCard({
             </>
           )}
           <View className="w-10" />
-          <View className="w-8" />
         </View>
       )}
 
@@ -143,17 +141,17 @@ export const SupersetCard = React.memo(function SupersetCard({
 
             return (
               <View key={ex.id}>
-                {/* Exercise label + last time inline */}
-                <View className="flex-row items-baseline justify-between ml-10 mb-0.5 pr-1">
-                  <Text className="text-xs font-medium text-foreground-muted">{ex.exerciseName}</Text>
-                  {firstPreviousSet && (
-                    <Text className="text-xs text-foreground-subtle ml-2 shrink-0">
+                {/* Exercise label + last time inline with dash */}
+                <Text className="text-xs font-medium text-foreground-muted mb-0.5">
+                  {ex.exerciseName}
+                  {firstPreviousSet ? (
+                    <Text className="text-foreground-subtle">
                       {isStrength
-                        ? `last: ${firstPreviousSet.weightKg ?? 0}kg × ${firstPreviousSet.reps ?? 0}`
-                        : `last: ${firstPreviousSet.durationSeconds ?? 0}s${firstPreviousSet.distanceMeters != null ? ` · ${firstPreviousSet.distanceMeters}m` : ''}`}
+                        ? ` - last: ${firstPreviousSet.weightKg ?? 0}kg × ${firstPreviousSet.reps ?? 0}`
+                        : ` - last: ${firstPreviousSet.durationSeconds ?? 0}s${firstPreviousSet.distanceMeters != null ? ` · ${firstPreviousSet.distanceMeters}m` : ''}`}
                     </Text>
-                  )}
-                </View>
+                  ) : null}
+                </Text>
 
                 {set ? (
                   <SetRow
@@ -163,26 +161,40 @@ export const SupersetCard = React.memo(function SupersetCard({
                     targetRepsMin={ex.targetRepsMin}
                     targetRepsMax={ex.targetRepsMax}
                     restSeconds={0}
+                    hideSetNumber
                     onSave={(data) => onSaveSet(set.id, data)}
-                    onRemove={() => onRemoveSet(set.id)}
                   />
                 ) : (
-                  <View className="h-10 ml-10" />
+                  <View className="h-10" />
                 )}
               </View>
             );
           })}
 
-          {/* Start Rest button per round */}
-          <Pressable
-            onPress={onStartRest}
-            className="mt-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-background-100 py-2"
-          >
-            <Ionicons name="timer-outline" size={16} color="rgb(163, 163, 163)" />
-            <Text className="text-xs text-foreground-muted">
-              Start Rest ({localRestSeconds}s)
-            </Text>
-          </Pressable>
+          {/* Start Rest + Delete Set buttons per round */}
+          <View className="mt-1 flex-row gap-2">
+            <Pressable
+              onPress={onStartRest}
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-background-100 py-2"
+            >
+              <Ionicons name="timer-outline" size={16} color="rgb(163, 163, 163)" />
+              <Text className="text-xs text-foreground-muted">
+                Start Rest ({localRestSeconds}s)
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                exercises.forEach((ex) => {
+                  const s = ex.sets[roundIndex];
+                  if (s) onRemoveSet(s.id);
+                });
+              }}
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-background-100 py-2"
+            >
+              <Ionicons name="trash-outline" size={16} color="rgb(163, 163, 163)" />
+              <Text className="text-xs text-foreground-muted">Delete Set</Text>
+            </Pressable>
+          </View>
         </View>
       ))}
 
