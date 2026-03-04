@@ -196,10 +196,10 @@ export const SupersetCard = React.memo(function SupersetCard({
           <View className="mt-1 flex-row gap-2">
             <Pressable
               onPress={onStartRest}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-background-100 py-2"
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-primary/20 py-2"
             >
-              <Ionicons name="timer-outline" size={16} color="rgb(163, 163, 163)" />
-              <Text className="text-xs text-foreground-muted">
+              <Ionicons name="timer-outline" size={16} color="rgb(52, 211, 153)" />
+              <Text className="text-xs font-medium text-primary">
                 Start Rest ({localRestSeconds}s)
               </Text>
             </Pressable>
@@ -210,10 +210,10 @@ export const SupersetCard = React.memo(function SupersetCard({
                   if (s) onRemoveSet(s.id);
                 });
               }}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-background-100 py-2"
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-destructive/10 py-2"
             >
-              <Ionicons name="trash-outline" size={16} color="rgb(163, 163, 163)" />
-              <Text className="text-xs text-foreground-muted">Delete Set</Text>
+              <Ionicons name="trash-outline" size={16} color="rgb(239, 68, 68)" />
+              <Text className="text-xs font-medium text-destructive">Delete Set</Text>
             </Pressable>
           </View>
         </View>
