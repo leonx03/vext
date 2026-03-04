@@ -103,18 +103,18 @@ export default function HomeScreen() {
 
         {/* Stats row */}
         <View className="flex-row px-4 mt-3 gap-3">
-          {/* PRs */}
-          <View className="flex-1 rounded-xl bg-background-50 p-4 items-center">
-            <Ionicons name="trophy-outline" size={24} color="rgb(251, 146, 60)" />
-            <Text className="mt-1 text-2xl font-bold text-foreground">{weeklyPRCount ?? 0}</Text>
-            <Text className="text-xs text-foreground-muted">PRs set</Text>
-          </View>
-
           {/* Workouts */}
           <View className="flex-1 rounded-xl bg-background-50 p-4 items-center">
             <Ionicons name="barbell-outline" size={24} color="rgb(52, 211, 153)" />
             <Text className="mt-1 text-2xl font-bold text-foreground">{weeklyStats?.workoutsThisWeek ?? 0}</Text>
             <Text className="text-xs text-foreground-muted">Workouts</Text>
+          </View>
+
+          {/* Sets */}
+          <View className="flex-1 rounded-xl bg-background-50 p-4 items-center">
+            <Ionicons name="layers-outline" size={24} color="rgb(52, 211, 153)" />
+            <Text className="mt-1 text-2xl font-bold text-foreground">{weeklyStats?.setsThisWeek ?? 0}</Text>
+            <Text className="text-xs text-foreground-muted">Sets</Text>
           </View>
 
           {/* Volume */}
@@ -127,11 +127,16 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Total sets */}
-        <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4 flex-row items-center justify-between">
-          <Text className="text-sm text-foreground-muted">Total sets</Text>
-          <Text className="text-xl font-bold text-foreground">{weeklyStats?.setsThisWeek ?? 0}</Text>
-        </View>
+        {/* PRs full-width card */}
+        {(weeklyPRCount ?? 0) > 0 && (
+          <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4 flex-row items-center gap-3">
+            <Ionicons name="trophy-outline" size={20} color="rgb(251, 146, 60)" />
+            <Text className="text-sm text-foreground">
+              <Text className="font-bold text-foreground">{weeklyPRCount}</Text>
+              {' '}personal record{weeklyPRCount === 1 ? '' : 's'} set this week
+            </Text>
+          </View>
+        )}
 
         {/* Muscle groups */}
         {weeklyMuscleGroups && Object.keys(weeklyMuscleGroups).length > 0 && (
