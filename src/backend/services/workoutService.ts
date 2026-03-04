@@ -184,9 +184,11 @@ export async function deleteWorkouts(
   db: SQLite.SQLiteDatabase,
   workoutIds: string[]
 ): Promise<void> {
-  for (const id of workoutIds) {
-    await workout.remove(db, id);
-  }
+  await db.withTransactionAsync(async () => {
+    for (const id of workoutIds) {
+      await workout.remove(db, id);
+    }
+  });
 }
 
 export async function getActiveWorkout(

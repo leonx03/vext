@@ -26,6 +26,7 @@ import { usePreviousSetsForExercises } from '@frontend/hooks/useHistory';
 import { ExerciseCategory } from '@shared/types/exercise';
 import type { Exercise } from '@shared/types/exercise';
 import type { WorkoutFull, WorkoutFieldDefinition } from '@shared/types/workout';
+import { cn } from '@frontend/lib/utils';
 
 function categoryFromFields(fields: WorkoutFieldDefinition[]): ExerciseCategory | undefined {
   if (fields.some((f) => f.name === 'weight')) return ExerciseCategory.Strength;
@@ -33,7 +34,6 @@ function categoryFromFields(fields: WorkoutFieldDefinition[]): ExerciseCategory 
   if (fields.some((f) => f.type === 'duration')) return ExerciseCategory.Flexibility;
   return undefined;
 }
-import { cn } from '@frontend/lib/utils';
 /** Inner component — only mounts once workout data is available. */
 function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: string }) {
   const router = useRouter();

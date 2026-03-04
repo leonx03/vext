@@ -106,6 +106,9 @@ export function useReorderExercises(workoutId: string) {
         queryClient.setQueryData(['workout', workoutId], context.previous);
       }
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
   });
 }
 
