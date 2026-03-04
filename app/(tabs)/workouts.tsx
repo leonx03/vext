@@ -166,10 +166,19 @@ export default function WorkoutsScreen() {
               <View className="flex-1">
                 <Text className="text-lg font-bold text-foreground">{selectedGroup?.displayName}</Text>
                 <Text className="text-xs text-foreground-subtle">
-                  {selectedGroup?.workoutTypeName} · {selectedGroup?.sessions.length} session{selectedGroup && selectedGroup.sessions.length !== 1 ? 's' : ''}
+                  {selectedGroup?.workoutTypeName} · {groupDetails?.length ?? selectedGroup?.sessions.length} session{(groupDetails?.length ?? selectedGroup?.sessions.length ?? 0) !== 1 ? 's' : ''}
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
+                {selectedGroup && (
+                  <Pressable
+                    onPress={() => { setSelectedGroup(null); handleRepeat(selectedGroup.latest.id); }}
+                    className="rounded-lg bg-primary px-3 py-1.5 flex-row items-center gap-1"
+                  >
+                    <Ionicons name="play" size={12} color="rgb(10, 10, 15)" />
+                    <Text className="text-xs font-bold text-background">Start</Text>
+                  </Pressable>
+                )}
                 {selectedGroup && selectedGroup.sessions.length > 1 && (
                   <Pressable
                     onPress={() => setConfirmDeleteGroup(selectedGroup)}

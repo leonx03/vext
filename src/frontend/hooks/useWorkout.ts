@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as workoutService from '@backend/services/workoutService';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import type { WorkoutSetInput } from '@backend/models/workoutSet';
-import { useExerciseOrderStore } from '@frontend/hooks/useExerciseOrderStore';
+import type { WorkoutFull } from '@shared/types/workout';
 
 export function useActiveWorkout() {
   const db = useDatabase();
@@ -90,9 +90,21 @@ export function useReorderExercises(workoutId: string) {
   return useMutation({
     mutationFn: (orderedIds: string[]) =>
       workoutService.reorderExercises(db, workoutId, orderedIds),
-    onSettled: async () => {
-      await queryClient.refetchQueries({ queryKey: ['workout', workoutId] });
-      useExerciseOrderStore.getState().clearOrder(workoutId);
+    onMutate: (orderedIds) => {
+      const previous = queryClient.getQueryData<WorkoutFull>(['workout', workoutId]);
+      queryClient.setQueryData<WorkoutFull>(['workout', workoutId], (old) => {
+        if (!old) return old;
+        const reordered = orderedIds
+          .map((id) => old.exercises.find((e) => e.id === id))
+          .filter((e): e is typeof old.exercises[number] => !!e);
+        return { ...old, exercises: reordered };
+      });
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['workout', workoutId], context.previous);
+      }
     },
   });
 }
@@ -159,6 +171,7 @@ export function useDeleteWorkout() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
       queryClient.invalidateQueries({ queryKey: ['workoutHistoryCount'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
       queryClient.invalidateQueries({ queryKey: ['todayStats'] });
       queryClient.invalidateQueries({ queryKey: ['weeklyStats'] });
       queryClient.invalidateQueries({ queryKey: ['currentStreak'] });
@@ -175,6 +188,7 @@ export function useDeleteWorkouts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
       queryClient.invalidateQueries({ queryKey: ['workoutHistoryCount'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
       queryClient.invalidateQueries({ queryKey: ['todayStats'] });
       queryClient.invalidateQueries({ queryKey: ['weeklyStats'] });
       queryClient.invalidateQueries({ queryKey: ['currentStreak'] });

@@ -19,11 +19,13 @@ type SetRowProps = {
   isStrength: boolean;
   targetRepsMin?: number | null;
   targetRepsMax?: number | null;
+  restSeconds?: number;
   onSave: (data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
+  onStartRest?: () => void;
   onRemove?: () => void;
 };
 
-export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin, targetRepsMax, onSave, onRemove }: SetRowProps) {
+export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin, targetRepsMax, restSeconds, onSave, onStartRest, onRemove }: SetRowProps) {
   const [weight, setWeight] = useState(set?.weightKg?.toString() ?? '');
   const [reps, setReps] = useState(set?.reps?.toString() ?? '');
   const [duration, setDuration] = useState(set?.durationSeconds?.toString() ?? '');
@@ -58,6 +60,8 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
     }
   };
 
+  const showRestButton = (restSeconds ?? 0) > 0 && !!onStartRest;
+
   return (
     <View>
       <View className="flex-row items-center py-2 gap-2">
@@ -74,6 +78,7 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
               keyboardType="decimal-pad"
               value={weight}
               onChangeText={(v) => { setWeight(v); setSaved(false); }}
+              onBlur={handleSave}
             />
             <Text className="text-foreground-subtle text-xs">x</Text>
             <TextInput
@@ -88,6 +93,7 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
               keyboardType="number-pad"
               value={reps}
               onChangeText={(v) => { setReps(v); setSaved(false); }}
+              onBlur={handleSave}
             />
           </>
         ) : (
@@ -99,6 +105,7 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
               keyboardType="number-pad"
               value={duration}
               onChangeText={(v) => { setDuration(v); setSaved(false); }}
+              onBlur={handleSave}
             />
             <TextInput
               className="h-10 flex-1 rounded-lg bg-background-100 px-3 text-center text-sm text-foreground"
@@ -107,18 +114,17 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
               keyboardType="decimal-pad"
               value={distance}
               onChangeText={(v) => { setDistance(v); setSaved(false); }}
+              onBlur={handleSave}
             />
           </>
         )}
 
-        {!saved ? (
-          <Pressable onPress={handleSave} className="w-10 h-10 items-center justify-center rounded-lg bg-primary">
-            <Ionicons name="checkmark" size={18} color="rgb(10, 10, 15)" />
+        {showRestButton ? (
+          <Pressable onPress={onStartRest} className="w-10 h-10 items-center justify-center rounded-lg bg-background-100">
+            <Ionicons name="timer-outline" size={18} color="rgb(163, 163, 163)" />
           </Pressable>
         ) : (
-          <View className="w-10 h-10 items-center justify-center">
-            <Ionicons name="checkmark-circle" size={20} color="rgb(52, 211, 153)" />
-          </View>
+          <View className="w-10" />
         )}
 
         {onRemove && (

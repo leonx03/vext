@@ -39,6 +39,7 @@ type ExerciseCardProps = {
   onRemoveExercise: () => void;
   onUpdateRestSeconds: (seconds: number) => void;
   onUpdateTargetReps: (min: number | null, max: number | null) => void;
+  onStartRest?: () => void;
 };
 
 export const ExerciseCard = React.memo(function ExerciseCard({
@@ -53,6 +54,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   onRemoveExercise,
   onUpdateRestSeconds,
   onUpdateTargetReps,
+  onStartRest,
 }: ExerciseCardProps) {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
@@ -109,7 +111,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
         >
           <Ionicons name="timer-outline" size={14} color="rgb(163, 163, 163)" />
           <Text className="ml-1 text-xs text-foreground-muted">
-            {localRestSeconds}s rest
+            {localRestSeconds === 0 ? 'No rest' : `${localRestSeconds}s rest`}
           </Text>
         </Pressable>
 
@@ -131,7 +133,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
       {editingRest && (
         <View className="flex-row items-center gap-2 mb-2">
           <Pressable
-            onPress={() => handleUpdateRest(Math.max(15, localRestSeconds - 15))}
+            onPress={() => handleUpdateRest(Math.max(0, localRestSeconds - 15))}
             className="rounded-lg bg-background-100 px-3 py-1.5"
           >
             <Text className="text-sm text-foreground-muted">-15s</Text>
@@ -207,7 +209,9 @@ export const ExerciseCard = React.memo(function ExerciseCard({
           isStrength={isStrength}
           targetRepsMin={exercise.targetRepsMin}
           targetRepsMax={exercise.targetRepsMax}
+          restSeconds={exercise.restSeconds}
           onSave={(data) => onSaveSet(set.id, data)}
+          onStartRest={onStartRest}
           onRemove={() => onRemoveSet(set.id)}
         />
       ))}

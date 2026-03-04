@@ -308,15 +308,7 @@ export async function repeatWorkout(
   const source = await getFullWorkout(db, sourceWorkoutId);
   if (!source) throw new Error('Source workout not found');
 
-  // Generate name: "Push Day (#3)" based on how many completed workouts share the same type
-  const countRow = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM workouts WHERE workout_type_id = ? AND status = ?`,
-    source.workoutTypeId,
-    WorkoutStatus.Completed
-  );
-  const count = (countRow?.count ?? 0) + 1;
-  const baseName = source.name || source.workoutType.name;
-  const generatedName = `${baseName} (#${count})`;
+  const name = source.name || source.workoutType.name;
 
   // Inherit the source's series_id, or create a new series and tag the source too
   let seriesId = source.seriesId;
@@ -325,7 +317,7 @@ export async function repeatWorkout(
     await db.runAsync(`UPDATE workouts SET series_id = ? WHERE id = ?`, seriesId, source.id);
   }
 
-  const newWorkout = await startWorkout(db, source.workoutTypeId, generatedName, seriesId);
+  const newWorkout = await startWorkout(db, source.workoutTypeId, name, seriesId);
 
   for (const ex of source.exercises) {
     const newExercise = await addExerciseToWorkout(db, newWorkout.id, ex.exerciseId, ex.restSeconds, ex.targetRepsMin, ex.targetRepsMax);
