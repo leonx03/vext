@@ -6,11 +6,12 @@ import * as workoutExercise from '@backend/models/workoutExercise';
 import * as workoutSet from '@backend/models/workoutSet';
 import * as workoutType from '@backend/models/workoutType';
 import * as exercise from '@backend/models/exercise';
+import * as supersetGroupModel from '@backend/models/supersetGroup';
 import { getDefaultRestSeconds } from '@backend/services/timerService';
 import { APP_CONFIG } from '@config/app';
 import { validateWeight, validateReps, validateDuration, validateDistance } from '@shared/utils/validation';
 import type { WorkoutSetInput } from '@backend/models/workoutSet';
-import type { Workout, WorkoutExercise, WorkoutSet, WorkoutFull, WorkoutSummary } from '@shared/types/workout';
+import type { Workout, WorkoutExercise, WorkoutSet, WorkoutFull, WorkoutSummary, SupersetGroup } from '@shared/types/workout';
 import { WorkoutStatus } from '@shared/types/workout';
 
 
@@ -152,7 +153,89 @@ export async function removeExerciseFromWorkout(
   db: SQLite.SQLiteDatabase,
   workoutExerciseId: string
 ): Promise<void> {
-  return workoutExercise.removeFromWorkout(db, workoutExerciseId);
+  const ex = await workoutExercise.getById(db, workoutExerciseId);
+  const supersetGroupId = ex?.supersetGroupId ?? null;
+
+  await workoutExercise.removeFromWorkout(db, workoutExerciseId);
+
+  if (supersetGroupId) {
+    const remaining = await workoutExercise.getBySuperset(db, supersetGroupId);
+    if (remaining.length <= 1) {
+      await disbandSuperset(db, supersetGroupId);
+    }
+  }
+}
+
+export async function makeSuperset(
+  db: SQLite.SQLiteDatabase,
+  workoutId: string,
+  existingWorkoutExerciseId: string,
+  newExerciseId: string
+): Promise<SupersetGroup> {
+  const group = await supersetGroupModel.create(db, workoutId, 90);
+  await workoutExercise.assignToSuperset(db, existingWorkoutExerciseId, group.id, 1);
+  const newEx = await addExerciseToWorkout(db, workoutId, newExerciseId);
+  await workoutExercise.assignToSuperset(db, newEx.id, group.id, 2);
+
+  // Pre-create empty sets for the new exercise to match existing rounds
+  const existingSets = await workoutSet.getByWorkoutExercise(db, existingWorkoutExerciseId);
+  for (let i = 0; i < existingSets.length; i++) {
+    await workoutSet.add(db, newEx.id);
+  }
+
+  return group;
+}
+
+export async function addExerciseToSuperset(
+  db: SQLite.SQLiteDatabase,
+  workoutId: string,
+  groupId: string,
+  newExerciseId: string
+): Promise<void> {
+  const existing = await workoutExercise.getBySuperset(db, groupId);
+  const nextPosition = existing.length + 1;
+  const newEx = await addExerciseToWorkout(db, workoutId, newExerciseId);
+  await workoutExercise.assignToSuperset(db, newEx.id, groupId, nextPosition);
+
+  // Pre-create empty sets to match existing round count so inputs appear immediately
+  if (existing.length > 0) {
+    const setCounts = await Promise.all(
+      existing.map((ex) => workoutSet.getByWorkoutExercise(db, ex.id).then((s) => s.length))
+    );
+    const maxRounds = Math.max(0, ...setCounts);
+    for (let i = 0; i < maxRounds; i++) {
+      await workoutSet.add(db, newEx.id);
+    }
+  }
+}
+
+export async function disbandSuperset(
+  db: SQLite.SQLiteDatabase,
+  groupId: string
+): Promise<void> {
+  const exercises = await workoutExercise.getBySuperset(db, groupId);
+  for (const ex of exercises) {
+    await workoutExercise.removeFromSuperset(db, ex.id);
+  }
+  await supersetGroupModel.deleteGroup(db, groupId);
+}
+
+export async function updateSupersetRestSeconds(
+  db: SQLite.SQLiteDatabase,
+  groupId: string,
+  restSeconds: number
+): Promise<void> {
+  await supersetGroupModel.updateRestSeconds(db, groupId, restSeconds);
+}
+
+export async function logSupersetRound(
+  db: SQLite.SQLiteDatabase,
+  groupId: string
+): Promise<void> {
+  const exercises = await workoutExercise.getBySuperset(db, groupId);
+  for (const ex of exercises) {
+    await workoutSet.add(db, ex.id);
+  }
 }
 
 export async function completeWorkout(
@@ -216,10 +299,13 @@ export async function getFullWorkout(
     })
   );
 
+  const supersetGroups = await supersetGroupModel.getByWorkout(db, workoutId);
+
   return {
     ...w,
     workoutType: type,
     exercises: exercisesWithSets,
+    supersetGroups,
   };
 }
 
@@ -321,8 +407,22 @@ export async function repeatWorkout(
 
   const newWorkout = await startWorkout(db, source.workoutTypeId, name, seriesId);
 
+  // Map old superset group IDs to new ones for the repeated workout
+  const groupIdMap = new Map<string, string>();
+
   for (const ex of source.exercises) {
     const newExercise = await addExerciseToWorkout(db, newWorkout.id, ex.exerciseId, ex.restSeconds, ex.targetRepsMin, ex.targetRepsMax);
+
+    if (ex.supersetGroupId) {
+      if (!groupIdMap.has(ex.supersetGroupId)) {
+        const oldGroup = source.supersetGroups.find((g) => g.id === ex.supersetGroupId);
+        const newGroup = await supersetGroupModel.create(db, newWorkout.id, oldGroup?.restSeconds ?? 90);
+        groupIdMap.set(ex.supersetGroupId, newGroup.id);
+      }
+      const newGroupId = groupIdMap.get(ex.supersetGroupId)!;
+      await workoutExercise.assignToSuperset(db, newExercise.id, newGroupId, ex.supersetPosition ?? 0);
+    }
+
     // Pre-create the same number of empty sets as the source exercise had
     for (let i = 0; i < ex.sets.length; i++) {
       await workoutSet.add(db, newExercise.id);

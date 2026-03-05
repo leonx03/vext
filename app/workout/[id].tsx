@@ -4,6 +4,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActiveWorkoutHeader } from '@frontend/components/workout/ActiveWorkoutHeader';
 import { ExerciseCard } from '@frontend/components/workout/ExerciseCard';
+import { SupersetCard } from '@frontend/components/workout/SupersetCard';
 import { ExercisePicker } from '@frontend/components/overlay/ExercisePicker';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import { EmptyState } from '@frontend/components/EmptyState';
@@ -21,11 +22,16 @@ import {
   useDiscardWorkout,
   useUpdateWorkoutExerciseRestSeconds,
   useUpdateExerciseTargetReps,
+  useMakeSuperset,
+  useAddExerciseToSuperset,
+  useDisbandSuperset,
+  useUpdateSupersetRestSeconds,
+  useLogSupersetRound,
 } from '@frontend/hooks/useWorkout';
 import { usePreviousSetsForExercises } from '@frontend/hooks/useHistory';
 import { ExerciseCategory } from '@shared/types/exercise';
 import type { Exercise } from '@shared/types/exercise';
-import type { WorkoutFull, WorkoutFieldDefinition } from '@shared/types/workout';
+import type { WorkoutExerciseFull, WorkoutFull, WorkoutFieldDefinition } from '@shared/types/workout';
 import { cn } from '@frontend/lib/utils';
 
 function categoryFromFields(fields: WorkoutFieldDefinition[]): ExerciseCategory | undefined {
@@ -34,10 +40,20 @@ function categoryFromFields(fields: WorkoutFieldDefinition[]): ExerciseCategory 
   if (fields.some((f) => f.type === 'duration')) return ExerciseCategory.Flexibility;
   return undefined;
 }
+
+type PickerMode =
+  | { type: 'add' }
+  | { type: 'makeSuperset'; workoutExerciseId: string }
+  | { type: 'addToSuperset'; groupId: string };
+
+type RenderItem =
+  | { type: 'standalone'; exercise: WorkoutExerciseFull }
+  | { type: 'superset'; groupId: string; exercises: WorkoutExerciseFull[] };
+
 /** Inner component — only mounts once workout data is available. */
 function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: string }) {
   const router = useRouter();
-  const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const startTimer = useTimerStore((s) => s.startTimer);
@@ -46,6 +62,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
     [workout.exercises]
   );
   const { data: previousSetsMap } = usePreviousSetsForExercises(exerciseIds, workout.seriesId);
+
   const addExercise = useAddExercise(id);
   const logSet = useLogSet(id);
   const updateSet = useUpdateSet(id);
@@ -56,19 +73,61 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
   const discardWorkout = useDiscardWorkout();
   const updateRestSeconds = useUpdateWorkoutExerciseRestSeconds(id);
   const updateTargetReps = useUpdateExerciseTargetReps(id);
+  const makeSuperset = useMakeSuperset(id);
+  const addToSuperset = useAddExerciseToSuperset(id);
+  const disbandSuperset = useDisbandSuperset(id);
+  const updateSupersetRest = useUpdateSupersetRestSeconds(id);
+  const logSupersetRound = useLogSupersetRound(id);
 
   const exercises = workout.exercises;
 
-  const handleAddExercise = (exercise: Exercise) => {
-    addExercise.mutate({ exerciseId: exercise.id });
+  // Group exercises into render items: standalone or superset
+  const renderItems = React.useMemo<RenderItem[]>(() => {
+    const items: RenderItem[] = [];
+    const seen = new Set<string>();
+
+    for (const ex of exercises) {
+      if (!ex.supersetGroupId) {
+        items.push({ type: 'standalone', exercise: ex });
+      } else if (!seen.has(ex.supersetGroupId)) {
+        seen.add(ex.supersetGroupId);
+        const groupExercises = exercises
+          .filter((e) => e.supersetGroupId === ex.supersetGroupId)
+          .sort((a, b) => (a.supersetPosition ?? 0) - (b.supersetPosition ?? 0));
+        items.push({ type: 'superset', groupId: ex.supersetGroupId, exercises: groupExercises });
+      }
+    }
+
+    return items;
+  }, [exercises]);
+
+  const handlePickerSelect = (exercise: Exercise) => {
+    if (!pickerMode) return;
+
+    if (pickerMode.type === 'add') {
+      addExercise.mutate({ exerciseId: exercise.id });
+    } else if (pickerMode.type === 'makeSuperset') {
+      makeSuperset.mutate({
+        workoutExerciseId: pickerMode.workoutExerciseId,
+        newExerciseId: exercise.id,
+      });
+    } else if (pickerMode.type === 'addToSuperset') {
+      addToSuperset.mutate({ groupId: pickerMode.groupId, newExerciseId: exercise.id });
+    }
+
+    setPickerMode(null);
   };
 
-  const handleMoveExercise = (index: number, direction: 'up' | 'down') => {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= exercises.length) return;
-    const newOrder = [...exercises];
-    [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
-    const orderedIds = newOrder.map((e) => e.id);
+  const handleMoveItem = (renderIndex: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? renderIndex - 1 : renderIndex + 1;
+    if (targetIndex < 0 || targetIndex >= renderItems.length) return;
+
+    const newItems = [...renderItems];
+    [newItems[renderIndex], newItems[targetIndex]] = [newItems[targetIndex], newItems[renderIndex]];
+
+    const orderedIds = newItems.flatMap((item) =>
+      item.type === 'standalone' ? [item.exercise.id] : item.exercises.map((e: WorkoutExerciseFull) => e.id)
+    );
     reorderExercises.mutate(orderedIds);
   };
 
@@ -106,28 +165,71 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
             title="No exercises yet"
             message="Add an exercise to get started"
             actionLabel="Add Exercise"
-            onAction={() => setShowExercisePicker(true)}
+            onAction={() => setPickerMode({ type: 'add' })}
           />
         ) : (
-          exercises.map((item, index) => (
-            <ExerciseCard
-              key={item.id}
-              exercise={item}
-              isStrength={isStrength}
-              previousSets={previousSetsMap?.get(item.exerciseId)}
-              onMoveUp={index > 0 ? () => handleMoveExercise(index, 'up') : undefined}
-              onMoveDown={index < exercises.length - 1 ? () => handleMoveExercise(index, 'down') : undefined}
-              onAddSet={() => {
-                logSet.mutate({ workoutExerciseId: item.id, data: {} });
-              }}
-              onSaveSet={(setId, data) => updateSet.mutate({ setId, data })}
-              onStartRest={item.restSeconds > 0 ? () => startTimer(item.restSeconds) : undefined}
-              onRemoveSet={(setId) => removeSet.mutate(setId)}
-              onRemoveExercise={() => removeExercise.mutate(item.id)}
-              onUpdateRestSeconds={(seconds) => updateRestSeconds.mutate({ workoutExerciseId: item.id, restSeconds: seconds })}
-              onUpdateTargetReps={(min, max) => updateTargetReps.mutate({ workoutExerciseId: item.id, targetRepsMin: min, targetRepsMax: max })}
-            />
-          ))
+          renderItems.map((item, renderIndex) => {
+            const isFirst = renderIndex === 0;
+            const isLast = renderIndex === renderItems.length - 1;
+
+            if (item.type === 'standalone') {
+              const ex = item.exercise;
+              return (
+                <ExerciseCard
+                  key={ex.id}
+                  exercise={ex}
+                  isStrength={isStrength}
+                  previousSets={previousSetsMap?.get(ex.exerciseId)}
+                  onMoveUp={!isFirst ? () => handleMoveItem(renderIndex, 'up') : undefined}
+                  onMoveDown={!isLast ? () => handleMoveItem(renderIndex, 'down') : undefined}
+                  onAddSet={() => logSet.mutate({ workoutExerciseId: ex.id, data: {} })}
+                  onSaveSet={(setId, data) => updateSet.mutate({ setId, data })}
+                  onStartRest={ex.restSeconds > 0 ? () => startTimer(ex.restSeconds) : undefined}
+                  onRemoveSet={(setId) => removeSet.mutate(setId)}
+                  onRemoveExercise={() => removeExercise.mutate(ex.id)}
+                  onUpdateRestSeconds={(seconds) =>
+                    updateRestSeconds.mutate({ workoutExerciseId: ex.id, restSeconds: seconds })
+                  }
+                  onUpdateTargetReps={(min, max) =>
+                    updateTargetReps.mutate({ workoutExerciseId: ex.id, targetRepsMin: min, targetRepsMax: max })
+                  }
+                  onMakeSuperset={() =>
+                    setPickerMode({ type: 'makeSuperset', workoutExerciseId: ex.id })
+                  }
+                />
+              );
+            }
+
+            // Superset
+            const group = workout.supersetGroups.find((g) => g.id === item.groupId);
+            if (!group) return null;
+
+            return (
+              <SupersetCard
+                key={item.groupId}
+                group={group}
+                exercises={item.exercises}
+                isStrength={isStrength}
+                previousSetsMap={previousSetsMap ?? new Map()}
+                onMoveUp={!isFirst ? () => handleMoveItem(renderIndex, 'up') : undefined}
+                onMoveDown={!isLast ? () => handleMoveItem(renderIndex, 'down') : undefined}
+                onAddRound={() => logSupersetRound.mutate(item.groupId)}
+                onSaveSet={(setId, data) => updateSet.mutate({ setId, data })}
+                onRemoveSet={(setId) => removeSet.mutate(setId)}
+                onRemoveExercise={(workoutExerciseId) => removeExercise.mutate(workoutExerciseId)}
+                onAddExercise={() => setPickerMode({ type: 'addToSuperset', groupId: item.groupId })}
+                onDisband={() => disbandSuperset.mutate(item.groupId)}
+                onUpdateRestSeconds={(seconds) =>
+                  updateSupersetRest.mutate({ groupId: item.groupId, restSeconds: seconds })
+                }
+                onUpdateTargetReps={(workoutExerciseId: string, min: number | null, max: number | null) =>
+                  updateTargetReps.mutate({ workoutExerciseId, targetRepsMin: min, targetRepsMax: max })
+                }
+                onLogSet={(workoutExerciseId, data) => logSet.mutate({ workoutExerciseId, data })}
+                onStartRest={() => startTimer(group.restSeconds)}
+              />
+            );
+          })
         )}
       </ScrollView>
 
@@ -147,7 +249,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
           </Pressable>
 
           <Pressable
-            onPress={() => setShowExercisePicker(true)}
+            onPress={() => setPickerMode({ type: 'add' })}
             className="flex-1 rounded-xl border border-background-100 py-3.5 items-center"
           >
             <Text className="text-sm font-semibold text-foreground">Add Exercise</Text>
@@ -166,9 +268,9 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
       </View>
 
       <ExercisePicker
-        visible={showExercisePicker}
-        onSelect={handleAddExercise}
-        onClose={() => setShowExercisePicker(false)}
+        visible={pickerMode !== null}
+        onSelect={handlePickerSelect}
+        onClose={() => setPickerMode(null)}
         defaultCategory={categoryFromFields(workout.workoutType.fields)}
       />
 

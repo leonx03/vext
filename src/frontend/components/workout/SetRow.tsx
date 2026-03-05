@@ -20,12 +20,13 @@ type SetRowProps = {
   targetRepsMin?: number | null;
   targetRepsMax?: number | null;
   restSeconds?: number;
+  hideSetNumber?: boolean;
   onSave: (data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
   onStartRest?: () => void;
   onRemove?: () => void;
 };
 
-export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin, targetRepsMax, restSeconds, onSave, onStartRest, onRemove }: SetRowProps) {
+export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin, targetRepsMax, restSeconds, hideSetNumber, onSave, onStartRest, onRemove }: SetRowProps) {
   const [weight, setWeight] = useState(set?.weightKg?.toString() ?? '');
   const [reps, setReps] = useState(set?.reps?.toString() ?? '');
   const [duration, setDuration] = useState(set?.durationSeconds?.toString() ?? '');
@@ -65,9 +66,11 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
   return (
     <View>
       <View className="flex-row items-center py-2 gap-2">
-        <View className="w-8 h-8 rounded-full bg-background-100 items-center justify-center">
-          <Text className="text-xs font-bold text-foreground-muted">{setNumber}</Text>
-        </View>
+        {!hideSetNumber && (
+          <View className="w-8 h-8 rounded-full bg-background-100 items-center justify-center">
+            <Text className="text-xs font-bold text-foreground-muted">{setNumber}</Text>
+          </View>
+        )}
 
         {isStrength ? (
           <>
@@ -123,9 +126,9 @@ export function SetRow({ set, previousSet, setNumber, isStrength, targetRepsMin,
           <Pressable onPress={onStartRest} className="w-10 h-10 items-center justify-center rounded-lg bg-background-100">
             <Ionicons name="timer-outline" size={18} color="rgb(163, 163, 163)" />
           </Pressable>
-        ) : (
+        ) : !hideSetNumber ? (
           <View className="w-10" />
-        )}
+        ) : null}
 
         {onRemove && (
           <Pressable onPress={onRemove} className="w-8 h-8 items-center justify-center">

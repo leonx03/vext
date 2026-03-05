@@ -246,6 +246,64 @@ export function useUpdateWorkoutExerciseRestSeconds(workoutId: string) {
   });
 }
 
+export function useMakeSuperset(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workoutExerciseId, newExerciseId }: { workoutExerciseId: string; newExerciseId: string }) =>
+      workoutService.makeSuperset(db, workoutId, workoutExerciseId, newExerciseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}
+
+export function useAddExerciseToSuperset(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, newExerciseId }: { groupId: string; newExerciseId: string }) =>
+      workoutService.addExerciseToSuperset(db, workoutId, groupId, newExerciseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}
+
+export function useDisbandSuperset(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => workoutService.disbandSuperset(db, groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}
+
+export function useUpdateSupersetRestSeconds(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, restSeconds }: { groupId: string; restSeconds: number }) =>
+      workoutService.updateSupersetRestSeconds(db, groupId, restSeconds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}
+
+export function useLogSupersetRound(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => workoutService.logSupersetRound(db, groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}
+
 export function useUpdateExerciseTargetReps(workoutId: string) {
   const db = useDatabase();
   const queryClient = useQueryClient();
