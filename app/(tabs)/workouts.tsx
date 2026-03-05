@@ -10,7 +10,29 @@ import { useRepeatWorkout, useDeleteWorkout, useDeleteWorkouts, useContinueWorko
 import { useRouter } from 'expo-router';
 import { formatDate, formatDuration, parseUTCTimestamp } from '@shared/utils/formatting';
 import { cn } from '@frontend/lib/utils';
-import type { WorkoutSummary, WorkoutGroup } from '@shared/types/workout';
+import type { WorkoutSummary, WorkoutGroup, WorkoutExerciseFull } from '@shared/types/workout';
+
+type SessionRenderItem =
+  | { kind: 'standalone'; ex: WorkoutExerciseFull }
+  | { kind: 'superset'; groupId: string; exercises: WorkoutExerciseFull[] };
+
+function buildSessionRenderItems(exercises: WorkoutExerciseFull[]): SessionRenderItem[] {
+  const items: SessionRenderItem[] = [];
+  const seenGroups = new Set<string>();
+  for (const ex of exercises) {
+    if (!ex.supersetGroupId) {
+      items.push({ kind: 'standalone', ex });
+    } else if (!seenGroups.has(ex.supersetGroupId)) {
+      seenGroups.add(ex.supersetGroupId);
+      items.push({
+        kind: 'superset',
+        groupId: ex.supersetGroupId,
+        exercises: exercises.filter((e) => e.supersetGroupId === ex.supersetGroupId),
+      });
+    }
+  }
+  return items;
+}
 
 /** Strip "(#N)" suffix to get the base workout name for grouping. */
 function getBaseName(name: string | null, typeName: string): string {
@@ -201,23 +223,25 @@ export default function WorkoutsScreen() {
                     ? Math.floor((parseUTCTimestamp(session.completedAt).getTime() - parseUTCTimestamp(session.startedAt).getTime()) / 1000)
                     : 0;
 
+                  const renderItems = buildSessionRenderItems(session.exercises);
+
                   return (
-                    <View key={session.id} className="mb-4">
+                    <View key={session.id} className="mb-6">
                       {/* Session header */}
-                      <View className="flex-row items-center justify-between mb-2">
-                        <Text className="text-sm font-semibold text-foreground">
-                          {formatDate(session.startedAt)}
-                        </Text>
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-xs text-foreground-muted">
-                            {formatDuration(duration)}
+                      <View className="flex-row items-center justify-between mb-3">
+                        <View>
+                          <Text className="text-sm font-semibold text-foreground">
+                            {formatDate(session.startedAt)}
                           </Text>
+                          <Text className="text-xs text-foreground-muted mt-0.5">{formatDuration(duration)}</Text>
+                        </View>
+                        <View className="flex-row items-center gap-2">
                           <Pressable
                             onPress={() => handleContinue(session.id)}
-                            className="rounded-lg bg-background-100 px-2 py-1 flex-row items-center gap-1"
+                            className="rounded-lg bg-background-100 px-2.5 py-1.5 flex-row items-center gap-1"
                           >
                             <Ionicons name="play-outline" size={12} color="rgb(52, 211, 153)" />
-                            <Text className="text-[10px] font-medium text-primary">Continue</Text>
+                            <Text className="text-xs font-medium text-primary">Continue</Text>
                           </Pressable>
                           <Pressable
                             onPress={() => setConfirmDeleteSessionId(session.id)}
@@ -228,28 +252,72 @@ export default function WorkoutsScreen() {
                         </View>
                       </View>
 
-                      {/* Exercises for this session */}
-                      {session.exercises.map((ex) => (
-                        <View key={ex.id} className="mb-2 rounded-xl bg-background-50 p-3">
-                          <Text className="text-sm font-medium text-foreground">{ex.exerciseName}</Text>
-                          {ex.sets.map((set) => (
-                            <View key={set.id} className="mt-1.5 flex-row items-center gap-2">
-                              <Text className="w-5 text-xs font-bold text-foreground-subtle">{set.setNumber}</Text>
-                              {set.weightKg != null && set.reps != null ? (
-                                <Text className="text-xs text-foreground-muted">
-                                  {set.weightKg} kg x {set.reps}
-                                </Text>
-                              ) : set.durationSeconds != null ? (
-                                <Text className="text-xs text-foreground-muted">
-                                  {set.durationSeconds}s{set.distanceMeters != null ? ` · ${set.distanceMeters}m` : ''}
-                                </Text>
-                              ) : (
-                                <Text className="text-xs text-foreground-subtle">-</Text>
-                              )}
+                      {/* Exercises */}
+                      {renderItems.map((item) => {
+                        if (item.kind === 'standalone') {
+                          const ex = item.ex;
+                          return (
+                            <View key={ex.id} className="mb-3 rounded-xl bg-background-50 p-3">
+                              <Text className="text-sm font-semibold text-foreground mb-2">{ex.exerciseName}</Text>
+                              {ex.sets.map((set) => (
+                                <View key={set.id} className="flex-row items-center py-1 gap-3">
+                                  <View className="w-6 h-6 rounded-full bg-background-100 items-center justify-center">
+                                    <Text className="text-[10px] font-bold text-foreground-subtle">{set.setNumber}</Text>
+                                  </View>
+                                  <Text className="text-sm text-foreground-muted">
+                                    {set.weightKg != null && set.reps != null
+                                      ? `${set.weightKg} kg × ${set.reps} reps`
+                                      : set.durationSeconds != null
+                                        ? `${set.durationSeconds}s${set.distanceMeters != null ? ` · ${set.distanceMeters}m` : ''}`
+                                        : '—'}
+                                  </Text>
+                                </View>
+                              ))}
                             </View>
-                          ))}
-                        </View>
-                      ))}
+                          );
+                        }
+
+                        // Superset
+                        const { groupId, exercises: groupExs } = item;
+                        const numRounds = Math.max(0, ...groupExs.map((e) => e.sets.length));
+                        return (
+                          <View key={groupId} className="mb-3 rounded-xl bg-background-50 p-3">
+                            <View className="flex-row items-center gap-2 mb-2">
+                              <View className="rounded-full bg-primary/20 px-2.5 py-0.5">
+                                <Text className="text-xs font-bold text-primary">Superset</Text>
+                              </View>
+                            </View>
+                            {Array.from({ length: numRounds }).map((_, roundIndex) => (
+                              <View key={roundIndex} className="mb-2">
+                                <Text className="text-xs font-bold text-foreground mb-1">Round {roundIndex + 1}</Text>
+                                <View className="flex-row ml-1 gap-3">
+                                  <View>
+                                    {groupExs.map((ge) => (
+                                      <Text key={ge.id} className="text-xs font-medium text-foreground-muted py-0.5">
+                                        {ge.exerciseName}
+                                      </Text>
+                                    ))}
+                                  </View>
+                                  <View>
+                                    {groupExs.map((ge) => {
+                                      const set = ge.sets[roundIndex];
+                                      return (
+                                        <Text key={ge.id} className="text-xs text-foreground-subtle py-0.5">
+                                          {set && set.weightKg != null && set.reps != null
+                                            ? `${set.weightKg} kg × ${set.reps}`
+                                            : set && set.durationSeconds != null
+                                              ? `${set.durationSeconds}s${set.distanceMeters != null ? ` · ${set.distanceMeters}m` : ''}`
+                                              : '—'}
+                                        </Text>
+                                      );
+                                    })}
+                                  </View>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })}
 
                       {/* Divider between sessions */}
                       {idx < groupDetails.length - 1 && (
