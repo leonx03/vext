@@ -78,6 +78,10 @@ export function useUpdateExercise() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['exercises'] });
       queryClient.invalidateQueries({ queryKey: ['exercise', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['workout'] });
+      queryClient.refetchQueries({ queryKey: ['workoutHistory'] });
+      queryClient.refetchQueries({ queryKey: ['workoutGroupDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['recentWorkouts'] });
     },
   });
 }

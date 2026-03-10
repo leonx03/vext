@@ -1,5 +1,6 @@
 /** Active workout screen - log sets, manage exercises, and complete/discard a workout. */
 import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActiveWorkoutHeader } from '@frontend/components/workout/ActiveWorkoutHeader';
@@ -55,6 +56,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
   const router = useRouter();
   const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [flexenDone, setFlexenDone] = useState(false);
 
   const startTimer = useTimerStore((s) => s.startTimer);
   const exerciseIds = React.useMemo(
@@ -230,6 +232,34 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
               />
             );
           })
+        )}
+        {isStrength && exercises.length > 0 && (
+          <View className="mb-4 rounded-xl bg-background-50 p-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-base font-bold text-foreground">Flexen</Text>
+              <View className="rounded-full bg-primary/20 px-2.5 py-0.5">
+                <Text className="text-xs font-bold text-primary">Finish</Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => setFlexenDone((d) => !d)}
+              className={cn(
+                'rounded-xl border py-4 items-center',
+                flexenDone ? 'border-primary bg-primary/10' : 'border-dashed border-background-100'
+              )}
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons
+                  name={flexenDone ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                  size={22}
+                  color={flexenDone ? 'rgb(52, 211, 153)' : 'rgb(115, 115, 115)'}
+                />
+                <Text className={cn('text-sm font-medium', flexenDone ? 'text-primary' : 'text-foreground-muted')}>
+                  {flexenDone ? 'Done!' : 'Mark as Done'}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
         )}
       </ScrollView>
 

@@ -168,3 +168,11 @@ export async function getCompletedByDateRange(
   );
   return rows.map(mapRow);
 }
+
+export async function updateName(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  name: string
+): Promise<void> {
+  await db.runAsync(`UPDATE workouts SET name = ? WHERE id = ?`, name, id);
+}

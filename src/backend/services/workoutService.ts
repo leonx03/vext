@@ -1,5 +1,4 @@
 /** Workout service - orchestrates workout lifecycle, set logging, and exercise management. */
-import * as Crypto from 'expo-crypto';
 import type * as SQLite from 'expo-sqlite';
 import * as workout from '@backend/models/workout';
 import * as workoutExercise from '@backend/models/workoutExercise';
@@ -7,6 +6,7 @@ import * as workoutSet from '@backend/models/workoutSet';
 import * as workoutType from '@backend/models/workoutType';
 import * as exercise from '@backend/models/exercise';
 import * as supersetGroupModel from '@backend/models/supersetGroup';
+import * as workoutSeriesModel from '@backend/models/workoutSeries';
 import { getDefaultRestSeconds } from '@backend/services/timerService';
 import { APP_CONFIG } from '@config/app';
 import { validateWeight, validateReps, validateDuration, validateDistance } from '@shared/utils/validation';
@@ -25,7 +25,17 @@ export async function startWorkout(
   if (active) {
     throw new Error('A workout is already in progress. Complete or discard it before starting a new one.');
   }
-  return workout.create(db, typeId, name, seriesId);
+
+  // If no series provided, create a new one
+  let resolvedSeriesId = seriesId ?? null;
+  if (!resolvedSeriesId) {
+    const type = await workoutType.getById(db, typeId);
+    const seriesName = name?.trim() || type?.name || 'Workout';
+    const series = await workoutSeriesModel.create(db, seriesName);
+    resolvedSeriesId = series.id;
+  }
+
+  return workout.create(db, typeId, name, resolvedSeriesId);
 }
 
 export async function addExerciseToWorkout(
@@ -330,7 +340,7 @@ export async function getWorkoutSummaries(
   const rows = await db.getAllAsync<SummaryRow>(
     `SELECT
        w.id,
-       w.name,
+       COALESCE(ws_series.name, w.name) AS name,
        wt.name            AS workout_type_name,
        w.status,
        w.started_at,
@@ -341,6 +351,7 @@ export async function getWorkoutSummaries(
        COALESCE(SUM(ws.weight_kg * ws.reps), 0)     AS total_volume
      FROM workouts w
      JOIN workout_types wt ON wt.id = w.workout_type_id
+     LEFT JOIN workout_series ws_series ON ws_series.id = w.series_id
      LEFT JOIN workout_exercises we ON we.workout_id = w.id
      LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id
      WHERE w.status = ?
@@ -398,10 +409,11 @@ export async function repeatWorkout(
 
   const name = source.name || source.workoutType.name;
 
-  // Inherit the source's series_id, or create a new series and tag the source too
+  // Post-migration all workouts have a series_id; create one only as a safety fallback
   let seriesId = source.seriesId;
   if (!seriesId) {
-    seriesId = Crypto.randomUUID();
+    const series = await workoutSeriesModel.create(db, source.name || source.workoutType.name);
+    seriesId = series.id;
     await db.runAsync(`UPDATE workouts SET series_id = ? WHERE id = ?`, seriesId, source.id);
   }
 
@@ -456,4 +468,14 @@ export async function getWorkoutSummaryCount(
     WorkoutStatus.Completed
   );
   return row?.count ?? 0;
+}
+
+export async function updateWorkoutSeriesName(
+  db: SQLite.SQLiteDatabase,
+  workoutId: string,
+  name: string
+): Promise<void> {
+  const w = await workout.getById(db, workoutId);
+  if (!w?.seriesId) throw new Error('Workout has no associated series');
+  return workoutSeriesModel.updateName(db, w.seriesId, name);
 }

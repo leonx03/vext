@@ -63,6 +63,8 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   const [editingRepGoal, setEditingRepGoal] = useState(false);
   const [repGoalInput, setRepGoalInput] = useState(formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax));
   const [localRestSeconds, setLocalRestSeconds] = useState(exercise.restSeconds);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
 
   useEffect(() => {
     setLocalRestSeconds(exercise.restSeconds);
@@ -71,6 +73,18 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   useEffect(() => {
     setRepGoalInput(formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax));
   }, [exercise.targetRepsMin, exercise.targetRepsMax]);
+
+  // Auto-collapse once when all sets are done; never re-triggers after manual expand
+  useEffect(() => {
+    if (hasAutoCollapsed || exercise.sets.length === 0) return;
+    const allDone = isStrength
+      ? exercise.sets.every((s) => s.weightKg != null && s.reps != null)
+      : exercise.sets.every((s) => s.durationSeconds != null);
+    if (allDone) {
+      setIsCollapsed(true);
+      setHasAutoCollapsed(true);
+    }
+  }, [exercise.sets, isStrength, hasAutoCollapsed]);
 
   const handleUpdateRest = (newVal: number) => {
     setLocalRestSeconds(newVal);
@@ -104,140 +118,155 @@ export const ExerciseCard = React.memo(function ExerciseCard({
         </Pressable>
       </View>
 
-      {/* Badges row */}
-      <View className="flex-row items-center gap-2 mb-2 flex-wrap">
-        {/* Rest time badge */}
-        <Pressable
-          onPress={() => setEditingRest(!editingRest)}
-          className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
-        >
-          <Ionicons name="timer-outline" size={14} color="rgb(163, 163, 163)" />
-          <Text className="ml-1 text-xs text-foreground-muted">
-            {localRestSeconds === 0 ? 'No rest' : `${localRestSeconds}s rest`}
-          </Text>
-        </Pressable>
-
-        {/* Rep goal badge */}
-        <Pressable
-          onPress={() => setEditingRepGoal(!editingRepGoal)}
-          className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
-        >
-          <Ionicons name="fitness-outline" size={14} color="rgb(163, 163, 163)" />
-          <Text className="ml-1 text-xs text-foreground-muted">
-            {exercise.targetRepsMin != null && exercise.targetRepsMax != null
-              ? `Goal: ${formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax)} reps`
-              : 'Set rep goal'}
-          </Text>
-        </Pressable>
-
-        {/* Make Superset badge */}
-        {onMakeSuperset && (
-          <Pressable
-            onPress={onMakeSuperset}
-            className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
-          >
-            <Ionicons name="layers-outline" size={14} color="rgb(163, 163, 163)" />
-            <Text className="ml-1 text-xs text-foreground-muted">Make Superset</Text>
-          </Pressable>
-        )}
-      </View>
-
-      {/* Rest time editor */}
-      {editingRest && (
-        <View className="flex-row items-center gap-2 mb-2">
-          <Pressable
-            onPress={() => handleUpdateRest(Math.max(0, localRestSeconds - 15))}
-            className="rounded-lg bg-background-100 px-3 py-1.5"
-          >
-            <Text className="text-sm text-foreground-muted">-15s</Text>
-          </Pressable>
-          <Text className="text-sm font-medium text-foreground min-w-[48px] text-center">
-            {localRestSeconds}s
-          </Text>
-          <Pressable
-            onPress={() => handleUpdateRest(localRestSeconds + 15)}
-            className="rounded-lg bg-background-100 px-3 py-1.5"
-          >
-            <Text className="text-sm text-foreground-muted">+15s</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Rep goal editor */}
-      {editingRepGoal && (
-        <View className="flex-row items-center gap-2 mb-2">
-          <TextInput
-            className="w-24 rounded-lg bg-background-100 px-3 py-2 text-center text-sm text-foreground"
-            placeholder="8-12"
-            placeholderTextColor="rgb(115, 115, 115)"
-            keyboardType="number-pad"
-            value={repGoalInput}
-            onChangeText={setRepGoalInput}
-            onSubmitEditing={handleSaveRepGoal}
-          />
-          <Pressable onPress={handleSaveRepGoal} className="rounded-lg bg-primary px-3 py-1.5">
-            <Text className="text-sm font-medium text-background">Save</Text>
-          </Pressable>
-          {exercise.targetRepsMin != null && (
+      {!isCollapsed && (
+        <>
+          {/* Badges row */}
+          <View className="flex-row items-center gap-2 mb-2 flex-wrap">
+            {/* Rest time badge */}
             <Pressable
-              onPress={() => {
-                onUpdateTargetReps(null, null);
-                setRepGoalInput('');
-                setEditingRepGoal(false);
-              }}
-              className="rounded-lg bg-background-100 px-3 py-1.5"
+              onPress={() => setEditingRest(!editingRest)}
+              className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
             >
-              <Text className="text-xs text-foreground-muted">Clear</Text>
+              <Ionicons name="timer-outline" size={14} color="rgb(163, 163, 163)" />
+              <Text className="ml-1 text-xs text-foreground-muted">
+                {localRestSeconds === 0 ? 'No rest' : `${localRestSeconds}s rest`}
+              </Text>
             </Pressable>
+
+            {/* Rep goal badge */}
+            <Pressable
+              onPress={() => setEditingRepGoal(!editingRepGoal)}
+              className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+            >
+              <Ionicons name="fitness-outline" size={14} color="rgb(163, 163, 163)" />
+              <Text className="ml-1 text-xs text-foreground-muted">
+                {exercise.targetRepsMin != null && exercise.targetRepsMax != null
+                  ? `Goal: ${formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax)} reps`
+                  : 'Rep goal'}
+              </Text>
+            </Pressable>
+
+            {/* Make Superset badge */}
+            {onMakeSuperset && (
+              <Pressable
+                onPress={onMakeSuperset}
+                className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+              >
+                <Ionicons name="layers-outline" size={14} color="rgb(163, 163, 163)" />
+                <Text className="ml-1 text-xs text-foreground-muted">Make Superset</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Rest time editor */}
+          {editingRest && (
+            <View className="flex-row items-center gap-2 mb-2">
+              <Pressable
+                onPress={() => handleUpdateRest(Math.max(0, localRestSeconds - 15))}
+                className="rounded-lg bg-background-100 px-3 py-1.5"
+              >
+                <Text className="text-sm text-foreground-muted">-15s</Text>
+              </Pressable>
+              <Text className="text-sm font-medium text-foreground min-w-[48px] text-center">
+                {localRestSeconds}s
+              </Text>
+              <Pressable
+                onPress={() => handleUpdateRest(localRestSeconds + 15)}
+                className="rounded-lg bg-background-100 px-3 py-1.5"
+              >
+                <Text className="text-sm text-foreground-muted">+15s</Text>
+              </Pressable>
+            </View>
           )}
-        </View>
+
+          {/* Rep goal editor */}
+          {editingRepGoal && (
+            <View className="flex-row items-center gap-2 mb-2">
+              <TextInput
+                className="w-24 rounded-lg bg-background-100 px-3 py-2 text-center text-sm text-foreground"
+                placeholder="8-12"
+                placeholderTextColor="rgb(115, 115, 115)"
+                keyboardType="number-pad"
+                value={repGoalInput}
+                onChangeText={setRepGoalInput}
+                onSubmitEditing={handleSaveRepGoal}
+              />
+              <Pressable onPress={handleSaveRepGoal} className="rounded-lg bg-primary px-3 py-1.5">
+                <Text className="text-sm font-medium text-background">Save</Text>
+              </Pressable>
+              {exercise.targetRepsMin != null && (
+                <Pressable
+                  onPress={() => {
+                    onUpdateTargetReps(null, null);
+                    setRepGoalInput('');
+                    setEditingRepGoal(false);
+                  }}
+                  className="rounded-lg bg-background-100 px-3 py-1.5"
+                >
+                  <Text className="text-xs text-foreground-muted">Clear</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Header row */}
+          <View className="flex-row items-center py-1 gap-2 mb-1">
+            <View className="w-8" />
+            {isStrength ? (
+              <>
+                <Text className="flex-1 text-center text-xs text-foreground-subtle">Weight</Text>
+                <Text className="text-xs text-foreground-subtle" />
+                <Text className="flex-1 text-center text-xs text-foreground-subtle">Reps</Text>
+              </>
+            ) : (
+              <>
+                <Text className="flex-1 text-center text-xs text-foreground-subtle">Duration</Text>
+                <Text className="flex-1 text-center text-xs text-foreground-subtle">Distance</Text>
+              </>
+            )}
+            <View className="w-10" />
+            <View className="w-8" />
+          </View>
+
+          {/* Existing sets */}
+          {exercise.sets.map((set, index) => (
+            <SetRow
+              key={set.id}
+              set={set}
+              previousSet={previousSets?.[index]}
+              setNumber={set.setNumber}
+              isStrength={isStrength}
+              targetRepsMin={exercise.targetRepsMin}
+              targetRepsMax={exercise.targetRepsMax}
+              restSeconds={exercise.restSeconds}
+              onSave={(data) => onSaveSet(set.id, data)}
+              onStartRest={onStartRest}
+              onRemove={() => onRemoveSet(set.id)}
+            />
+          ))}
+
+          {/* Add Set button */}
+          <Pressable
+            onPress={onAddSet}
+            className="mt-2 rounded-xl border border-dashed border-background-100 py-3 items-center"
+          >
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons name="add" size={18} color="rgb(52, 211, 153)" />
+              <Text className="text-sm font-medium text-primary">Add Set</Text>
+            </View>
+          </Pressable>
+        </>
       )}
 
-      {/* Header row */}
-      <View className="flex-row items-center py-1 gap-2 mb-1">
-        <View className="w-8" />
-        {isStrength ? (
-          <>
-            <Text className="flex-1 text-center text-xs text-foreground-subtle">Weight</Text>
-            <Text className="text-xs text-foreground-subtle" />
-            <Text className="flex-1 text-center text-xs text-foreground-subtle">Reps</Text>
-          </>
-        ) : (
-          <>
-            <Text className="flex-1 text-center text-xs text-foreground-subtle">Duration</Text>
-            <Text className="flex-1 text-center text-xs text-foreground-subtle">Distance</Text>
-          </>
-        )}
-        <View className="w-10" />
-        <View className="w-8" />
-      </View>
-
-      {/* Existing sets */}
-      {exercise.sets.map((set, index) => (
-        <SetRow
-          key={set.id}
-          set={set}
-          previousSet={previousSets?.[index]}
-          setNumber={set.setNumber}
-          isStrength={isStrength}
-          targetRepsMin={exercise.targetRepsMin}
-          targetRepsMax={exercise.targetRepsMax}
-          restSeconds={exercise.restSeconds}
-          onSave={(data) => onSaveSet(set.id, data)}
-          onStartRest={onStartRest}
-          onRemove={() => onRemoveSet(set.id)}
-        />
-      ))}
-
-      {/* Add Set button */}
       <Pressable
-        onPress={onAddSet}
-        className="mt-2 rounded-xl border border-dashed border-background-100 py-3 items-center"
+        onPress={() => setIsCollapsed((c) => !c)}
+        className="mt-3 -mx-4 -mb-4 rounded-b-xl border-t border-background-100 py-2 items-center"
       >
-        <View className="flex-row items-center gap-1.5">
-          <Ionicons name="add" size={18} color="rgb(52, 211, 153)" />
-          <Text className="text-sm font-medium text-primary">Add Set</Text>
-        </View>
+        <Ionicons
+          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+          size={16}
+          color="rgb(115, 115, 115)"
+        />
       </Pressable>
 
       <ConfirmDialog

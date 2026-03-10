@@ -65,6 +65,11 @@ export const SupersetCard = React.memo(function SupersetCard({
   const [repGoalInputs, setRepGoalInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(exercises.map((ex) => [ex.id, formatRepRange(ex.targetRepsMin, ex.targetRepsMax)]))
   );
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
+
+  const hasAnyRepGoal = exercises.some((ex) => ex.targetRepsMin != null);
+  const numRounds = Math.max(0, ...exercises.map((ex) => ex.sets.length));
 
   useEffect(() => {
     setLocalRestSeconds(group.restSeconds);
@@ -75,6 +80,21 @@ export const SupersetCard = React.memo(function SupersetCard({
       Object.fromEntries(exercises.map((ex) => [ex.id, formatRepRange(ex.targetRepsMin, ex.targetRepsMax)]))
     );
   }, [exercises]);
+
+  // Auto-collapse once when all rounds are fully filled in
+  useEffect(() => {
+    if (hasAutoCollapsed || numRounds === 0) return;
+    const allDone = exercises.every((ex) =>
+      ex.sets.length === numRounds &&
+      ex.sets.every((s) =>
+        isStrength ? s.weightKg != null && s.reps != null : s.durationSeconds != null
+      )
+    );
+    if (allDone) {
+      setIsCollapsed(true);
+      setHasAutoCollapsed(true);
+    }
+  }, [exercises, numRounds, isStrength, hasAutoCollapsed]);
 
   const handleUpdateRest = (newVal: number) => {
     setLocalRestSeconds(newVal);
@@ -89,13 +109,10 @@ export const SupersetCard = React.memo(function SupersetCard({
     setShowRepGoalDialog(false);
   };
 
-  const hasAnyRepGoal = exercises.some((ex) => ex.targetRepsMin != null);
-  const numRounds = Math.max(0, ...exercises.map((ex) => ex.sets.length));
-
   return (
     <View className="mb-4 rounded-xl bg-background-50 p-4">
       {/* Header */}
-      <View className="flex-row items-center mb-3 gap-2">
+      <View className="flex-row flex-wrap items-center mb-3 gap-2">
         {(onMoveUp || onMoveDown) && (
           <View className="flex-row items-center gap-1">
             <Pressable onPress={onMoveUp} disabled={!onMoveUp} className="p-1.5">
@@ -131,8 +148,7 @@ export const SupersetCard = React.memo(function SupersetCard({
         )}
       </View>
 
-      {/* Rest editor */}
-      {editingRest && (
+      {!isCollapsed && editingRest && (
         <View className="flex-row items-center gap-2 mb-3">
           <Pressable
             onPress={() => handleUpdateRest(Math.max(0, localRestSeconds - 15))}
@@ -153,7 +169,7 @@ export const SupersetCard = React.memo(function SupersetCard({
       )}
 
       {/* Rounds */}
-      {Array.from({ length: numRounds }).map((_, roundIndex) => (
+      {!isCollapsed && Array.from({ length: numRounds }).map((_, roundIndex) => (
         <View key={roundIndex} className="mb-2">
           <Text className="text-sm font-bold text-foreground mb-1 ml-1">
             Round {roundIndex + 1}
@@ -230,17 +246,20 @@ export const SupersetCard = React.memo(function SupersetCard({
       ))}
 
       {/* Add Set button */}
-      <Pressable
-        onPress={onAddRound}
-        className="mt-2 mb-3 rounded-xl border border-dashed border-background-100 py-3 items-center"
-      >
-        <View className="flex-row items-center gap-1.5">
-          <Ionicons name="add" size={18} color="rgb(52, 211, 153)" />
-          <Text className="text-sm font-medium text-primary">Add Set</Text>
-        </View>
-      </Pressable>
+      {!isCollapsed && (
+        <Pressable
+          onPress={onAddRound}
+          className="mt-2 mb-3 rounded-xl border border-dashed border-background-100 py-3 items-center"
+        >
+          <View className="flex-row items-center gap-1.5">
+            <Ionicons name="add" size={18} color="rgb(52, 211, 153)" />
+            <Text className="text-sm font-medium text-primary">Add Set</Text>
+          </View>
+        </Pressable>
+      )}
 
       {/* Bottom actions */}
+      {!isCollapsed && (
       <View className="flex-row items-center gap-2">
         <Pressable
           onPress={onAddExercise}
@@ -258,6 +277,18 @@ export const SupersetCard = React.memo(function SupersetCard({
           <Text className="text-xs text-foreground-muted">Ungroup</Text>
         </Pressable>
       </View>
+      )}
+
+      <Pressable
+        onPress={() => setIsCollapsed((c) => !c)}
+        className="mt-3 -mx-4 -mb-4 rounded-b-xl border-t border-background-100 py-2 items-center"
+      >
+        <Ionicons
+          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+          size={16}
+          color="rgb(115, 115, 115)"
+        />
+      </Pressable>
 
       <ConfirmDialog
         visible={showDisbandConfirm}

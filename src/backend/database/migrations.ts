@@ -152,6 +152,64 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_workout_exercises_superset ON workout_exercises(superset_group_id);
     `);
   },
+  // v7 -> v8: Add workout_series table as single source of truth for workout names
+  async (db) => {
+    // Create the new workout_series table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS workout_series (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_workouts_series_id ON workouts(series_id);
+    `);
+
+    // Step 1: Migrate workouts that already have a series_id
+    // Insert one workout_series row per unique series_id, using the name from
+    // the earliest workout in that series (fallback to workout_type name)
+    const seriesGroups = await db.getAllAsync<{ series_id: string; name: string; created_at: string }>(
+      `SELECT
+         w.series_id,
+         COALESCE(
+           (SELECT w2.name FROM workouts w2
+            WHERE w2.series_id = w.series_id AND w2.name IS NOT NULL
+            ORDER BY w2.started_at ASC LIMIT 1),
+           wt.name
+         ) AS name,
+         MIN(w.started_at) AS created_at
+       FROM workouts w
+       JOIN workout_types wt ON wt.id = w.workout_type_id
+       WHERE w.series_id IS NOT NULL
+       GROUP BY w.series_id`
+    );
+
+    for (const s of seriesGroups) {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO workout_series (id, name, created_at) VALUES (?, ?, ?)`,
+        s.series_id, s.name ?? 'Workout', s.created_at
+      );
+    }
+
+    // Step 2: Migrate standalone workouts (no series_id) — create a series for each
+    const standalone = await db.getAllAsync<{ id: string; name: string; started_at: string }>(
+      `SELECT w.id, COALESCE(w.name, wt.name) AS name, w.started_at
+       FROM workouts w
+       JOIN workout_types wt ON wt.id = w.workout_type_id
+       WHERE w.series_id IS NULL`
+    );
+
+    for (const w of standalone) {
+      const seriesId = Crypto.randomUUID();
+      await db.runAsync(
+        `INSERT INTO workout_series (id, name, created_at) VALUES (?, ?, ?)`,
+        seriesId, w.name ?? 'Workout', w.started_at
+      );
+      await db.runAsync(
+        `UPDATE workouts SET series_id = ? WHERE id = ?`,
+        seriesId, w.id
+      );
+    }
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

@@ -13,6 +13,7 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   [MuscleGroup.Calves]: 'Calves',
   [MuscleGroup.Core]: 'Core',
   [MuscleGroup.FullBody]: 'Full Body',
+  [MuscleGroup.Forearms]: 'Forearms',
 };
 
 export const ALL_MUSCLE_GROUPS = Object.values(MuscleGroup);
@@ -23,6 +24,7 @@ export const MUSCLE_GROUP_ORDER: MuscleGroup[] = [
   MuscleGroup.Back,
   MuscleGroup.Triceps,
   MuscleGroup.Biceps,
+  MuscleGroup.Forearms,
   MuscleGroup.Shoulders,
   MuscleGroup.Quads,
   MuscleGroup.Hamstrings,

@@ -11,6 +11,7 @@ export enum MuscleGroup {
   Calves = 'calves',
   Core = 'core',
   FullBody = 'full_body',
+  Forearms = 'forearms',
 }
 
 export enum Equipment {

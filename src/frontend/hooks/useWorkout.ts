@@ -132,6 +132,7 @@ export function useCompleteWorkout() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeWorkout'] });
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
       queryClient.invalidateQueries({ queryKey: ['todayStats'] });
       queryClient.invalidateQueries({ queryKey: ['weeklyStats'] });
       queryClient.invalidateQueries({ queryKey: ['currentStreak'] });
@@ -312,6 +313,20 @@ export function useUpdateExerciseTargetReps(workoutId: string) {
       workoutService.updateExerciseTargetReps(db, workoutExerciseId, targetRepsMin, targetRepsMax),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}
+
+export function useUpdateWorkoutName() {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workoutId, name }: { workoutId: string; name: string }) =>
+      workoutService.updateWorkoutSeriesName(db, workoutId, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['recentWorkouts'] });
     },
   });
 }

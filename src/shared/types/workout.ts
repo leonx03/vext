@@ -20,6 +20,12 @@ export interface WorkoutType {
   createdAt: string;
 }
 
+export interface WorkoutSeries {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Workout {
   id: string;
   workoutTypeId: string;
