@@ -23,6 +23,7 @@ export interface WorkoutType {
 export interface WorkoutSeries {
   id: string;
   name: string;
+  sortOrder: number;
   createdAt: string;
 }
 
@@ -40,6 +41,24 @@ export interface Workout {
   lastStartedAt: string | null;
 }
 
+export interface ExerciseSlot {
+  id: string;
+  seriesId: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ExerciseOption {
+  id: string;
+  slotId: string;
+  exerciseId: string;
+  isPrimary: boolean;
+  restSeconds: number;
+  targetRepsMin: number | null;
+  targetRepsMax: number | null;
+  createdAt: string;
+}
+
 export interface SupersetGroup {
   id: string;
   workoutId: string;
@@ -51,6 +70,8 @@ export interface WorkoutExercise {
   id: string;
   workoutId: string;
   exerciseId: string;
+  slotId: string;
+  exerciseOptionId: string | null;
   sortOrder: number;
   restSeconds: number;
   targetRepsMin: number | null;
@@ -90,6 +111,7 @@ export interface WorkoutExerciseFull extends WorkoutExercise {
 /** Summary for history list items */
 export interface WorkoutSummary {
   id: string;
+  seriesId: string | null;
   name: string | null;
   workoutTypeName: string;
   status: WorkoutStatus;
@@ -105,6 +127,7 @@ export interface WorkoutSummary {
 /** Grouped repeated workouts for history list */
 export interface WorkoutGroup {
   key: string;
+  seriesId: string | null;
   displayName: string;
   workoutTypeName: string;
   latest: WorkoutSummary;

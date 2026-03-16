@@ -6,7 +6,7 @@ import { WorkoutCard } from '@frontend/components/workout/WorkoutCard';
 import { EmptyState } from '@frontend/components/EmptyState';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import { useWorkoutHistory, useWorkoutGroupDetails } from '@frontend/hooks/useHistory';
-import { useRepeatWorkout, useDeleteWorkout, useDeleteWorkouts, useContinueWorkout, useForceContinueWorkout, useUpdateWorkoutName } from '@frontend/hooks/useWorkout';
+import { useRepeatWorkout, useDeleteWorkout, useDeleteWorkouts, useContinueWorkout, useForceContinueWorkout, useUpdateWorkoutName, useMoveSeriesUp, useMoveSeriesDown } from '@frontend/hooks/useWorkout';
 import { useRouter } from 'expo-router';
 import { formatDate, formatDuration, parseUTCTimestamp } from '@shared/utils/formatting';
 import { cn } from '@frontend/lib/utils';
@@ -51,6 +51,7 @@ function groupWorkouts(workouts: WorkoutSummary[]): WorkoutGroup[] {
     } else {
       map.set(key, {
         key,
+        seriesId: w.seriesId,
         displayName: baseName,
         workoutTypeName: w.workoutTypeName,
         latest: w,
@@ -71,6 +72,8 @@ export default function WorkoutsScreen() {
 
   const continueWorkout = useContinueWorkout();
   const forceContinueWorkout = useForceContinueWorkout();
+  const moveSeriesUp = useMoveSeriesUp();
+  const moveSeriesDown = useMoveSeriesDown();
 
   const [selectedGroup, setSelectedGroup] = useState<WorkoutGroup | null>(null);
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<WorkoutGroup | null>(null);
@@ -92,6 +95,20 @@ export default function WorkoutsScreen() {
   );
 
   const groups = useMemo(() => groupWorkouts(workouts), [workouts]);
+
+  // Keep selectedGroup in sync with live data after mutations (delete, rename, etc.)
+  useEffect(() => {
+    if (!selectedGroup) return;
+    const fresh = groups.find((g) => g.key === selectedGroup.key);
+    if (!fresh) {
+      setSelectedGroup(null);
+    } else if (
+      fresh.latest.id !== selectedGroup.latest.id ||
+      fresh.sessions.length !== selectedGroup.sessions.length
+    ) {
+      setSelectedGroup(fresh);
+    }
+  }, [groups]);
 
   // Reset editing state when selected group changes
   useEffect(() => {
@@ -179,15 +196,35 @@ export default function WorkoutsScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
-          <WorkoutCard
-            workout={item.latest}
-            sessionCount={item.sessions.length}
-            onPress={() => setSelectedGroup(item)}
-            onRepeat={() => handleRepeat(item.latest.id)}
-            onDelete={() => setConfirmDeleteGroup(item)}
-            onEdit={(name) => updateWorkoutName.mutate({ workoutId: item.latest.id, name })}
-          />
+        renderItem={({ item, index }) => (
+          <View className="flex-row items-center">
+            <View className="flex-1">
+              <WorkoutCard
+                workout={item.latest}
+                sessionCount={item.sessions.length}
+                onPress={() => setSelectedGroup(item)}
+                onRepeat={() => handleRepeat(item.latest.id)}
+                onDelete={() => setConfirmDeleteGroup(item)}
+                onEdit={(name) => updateWorkoutName.mutate({ workoutId: item.latest.id, name })}
+              />
+            </View>
+            <View className="ml-1.5 flex-col justify-center gap-1">
+              <Pressable
+                onPress={() => item.seriesId && moveSeriesUp.mutate(item.seriesId)}
+                disabled={index === 0}
+                className="p-2 rounded-lg bg-background-50"
+              >
+                <Ionicons name="chevron-up" size={16} color={index === 0 ? 'rgb(64, 64, 64)' : 'rgb(163, 163, 163)'} />
+              </Pressable>
+              <Pressable
+                onPress={() => item.seriesId && moveSeriesDown.mutate(item.seriesId)}
+                disabled={index === groups.length - 1}
+                className="p-2 rounded-lg bg-background-50"
+              >
+                <Ionicons name="chevron-down" size={16} color={index === groups.length - 1 ? 'rgb(64, 64, 64)' : 'rgb(163, 163, 163)'} />
+              </Pressable>
+            </View>
+          </View>
         )}
       />
 

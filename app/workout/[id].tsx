@@ -28,6 +28,7 @@ import {
   useDisbandSuperset,
   useUpdateSupersetRestSeconds,
   useLogSupersetRound,
+  useSwitchWorkoutExercise,
 } from '@frontend/hooks/useWorkout';
 import { usePreviousSetsForExercises } from '@frontend/hooks/useHistory';
 import { ExerciseCategory } from '@shared/types/exercise';
@@ -75,6 +76,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
   const discardWorkout = useDiscardWorkout();
   const updateRestSeconds = useUpdateWorkoutExerciseRestSeconds(id);
   const updateTargetReps = useUpdateExerciseTargetReps(id);
+  const switchExercise = useSwitchWorkoutExercise(id);
   const makeSuperset = useMakeSuperset(id);
   const addToSuperset = useAddExerciseToSuperset(id);
   const disbandSuperset = useDisbandSuperset(id);
@@ -181,6 +183,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
                   key={ex.id}
                   exercise={ex}
                   isStrength={isStrength}
+                  seriesId={workout.seriesId}
                   previousSets={previousSetsMap?.get(ex.exerciseId)}
                   onMoveUp={!isFirst ? () => handleMoveItem(renderIndex, 'up') : undefined}
                   onMoveDown={!isLast ? () => handleMoveItem(renderIndex, 'down') : undefined}
@@ -197,6 +200,9 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
                   }
                   onMakeSuperset={() =>
                     setPickerMode({ type: 'makeSuperset', workoutExerciseId: ex.id })
+                  }
+                  onSwitchToAlternative={(workoutExerciseId, newExerciseId) =>
+                    switchExercise.mutate({ workoutExerciseId, newExerciseId })
                   }
                 />
               );

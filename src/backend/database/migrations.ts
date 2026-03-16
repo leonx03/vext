@@ -210,6 +210,157 @@ const migrations: Migration[] = [
       );
     }
   },
+  // v8 -> v9: Add sort_order to workout_series for manual ordering
+  async (db) => {
+    await db.execAsync(`
+      ALTER TABLE workout_series ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+    `);
+    // Initialize: oldest series gets sort_order 1, newest gets N (sorted DESC = newest at top)
+    await db.execAsync(`
+      UPDATE workout_series
+      SET sort_order = (
+        SELECT COUNT(*) FROM workout_series ws2
+        WHERE ws2.created_at < workout_series.created_at
+          OR (ws2.created_at = workout_series.created_at AND ws2.id <= workout_series.id)
+      );
+    `);
+  },
+  // v9 -> v10: Add series_exercise_alternatives for per-series alternative exercises
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS series_exercise_alternatives (
+        id TEXT PRIMARY KEY,
+        series_id TEXT NOT NULL REFERENCES workout_series(id) ON DELETE CASCADE,
+        exercise_id TEXT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        alternative_exercise_id TEXT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(series_id, exercise_id, alternative_exercise_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_sea_series_exercise ON series_exercise_alternatives(series_id, exercise_id);
+    `);
+  },
+  // v10 -> v11: Replace series+exercise keyed alternatives with stable slot_id per exercise position
+  async (db) => {
+    // Add slot_id to workout_exercises; backfill existing rows with their own id
+    await db.execAsync(`ALTER TABLE workout_exercises ADD COLUMN slot_id TEXT NOT NULL DEFAULT '';`);
+    await db.execAsync(`UPDATE workout_exercises SET slot_id = id;`);
+    // Drop old alternatives table (keyed by series+exercise, breaks after switching exercises)
+    await db.execAsync(`DROP TABLE IF EXISTS series_exercise_alternatives;`);
+    // New table keyed by stable slot_id
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS exercise_slot_alternatives (
+        id TEXT PRIMARY KEY,
+        slot_id TEXT NOT NULL,
+        alternative_exercise_id TEXT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(slot_id, alternative_exercise_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_esa_slot ON exercise_slot_alternatives(slot_id);
+    `);
+  },
+  // v11 -> v12: Add exercise_slots and exercise_options as first-class tables
+  async (db) => {
+    // Step 1: Create new tables and add exercise_option_id column
+    await db.execAsync(`
+      CREATE TABLE exercise_slots (
+        id TEXT PRIMARY KEY,
+        series_id TEXT NOT NULL REFERENCES workout_series(id) ON DELETE CASCADE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_exercise_slots_series ON exercise_slots(series_id);
+
+      CREATE TABLE exercise_options (
+        id TEXT PRIMARY KEY,
+        slot_id TEXT NOT NULL REFERENCES exercise_slots(id) ON DELETE CASCADE,
+        exercise_id TEXT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        is_primary INTEGER NOT NULL DEFAULT 0,
+        rest_seconds INTEGER NOT NULL DEFAULT 90,
+        target_reps_min INTEGER DEFAULT NULL,
+        target_reps_max INTEGER DEFAULT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(slot_id, exercise_id)
+      );
+      CREATE INDEX idx_exercise_options_slot ON exercise_options(slot_id);
+
+      ALTER TABLE workout_exercises ADD COLUMN exercise_option_id TEXT
+        REFERENCES exercise_options(id) ON DELETE SET NULL;
+    `);
+
+    // Step 2: Backfill exercise_slots (one per unique slot_id, inherit series from workout)
+    await db.execAsync(`
+      INSERT INTO exercise_slots (id, series_id, sort_order, created_at)
+      SELECT we.slot_id, w.series_id, MIN(we.sort_order), MIN(we.created_at)
+      FROM workout_exercises we
+      JOIN workouts w ON w.id = we.workout_id
+      WHERE we.slot_id != '' AND w.series_id IS NOT NULL
+      GROUP BY we.slot_id;
+    `);
+
+    // Step 3: Backfill exercise_options from workout_exercises (latest settings per slot+exercise)
+    const uniquePairs = await db.getAllAsync<{ slot_id: string; exercise_id: string }>(
+      `SELECT DISTINCT slot_id, exercise_id FROM workout_exercises
+       WHERE slot_id != '' AND EXISTS (SELECT 1 FROM exercise_slots WHERE id = slot_id)`
+    );
+    for (const pair of uniquePairs) {
+      const latest = await db.getFirstAsync<{
+        rest_seconds: number;
+        target_reps_min: number | null;
+        target_reps_max: number | null;
+        created_at: string;
+      }>(
+        `SELECT we.rest_seconds, we.target_reps_min, we.target_reps_max, we.created_at
+         FROM workout_exercises we
+         JOIN workouts w ON w.id = we.workout_id
+         WHERE we.slot_id = ? AND we.exercise_id = ?
+         ORDER BY w.started_at DESC LIMIT 1`,
+        pair.slot_id, pair.exercise_id
+      );
+      if (latest) {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO exercise_options
+             (id, slot_id, exercise_id, is_primary, rest_seconds, target_reps_min, target_reps_max, created_at)
+           VALUES (?, ?, ?, 1, ?, ?, ?, ?)`,
+          Crypto.randomUUID(), pair.slot_id, pair.exercise_id,
+          latest.rest_seconds, latest.target_reps_min, latest.target_reps_max, latest.created_at
+        );
+      }
+    }
+
+    // Step 4: Backfill exercise_options from exercise_slot_alternatives (as non-primary)
+    const alternatives = await db.getAllAsync<{
+      slot_id: string;
+      alternative_exercise_id: string;
+      created_at: string;
+    }>(
+      `SELECT esa.slot_id, esa.alternative_exercise_id, esa.created_at
+       FROM exercise_slot_alternatives esa
+       WHERE EXISTS (SELECT 1 FROM exercise_slots WHERE id = esa.slot_id)`
+    );
+    for (const alt of alternatives) {
+      const primaryRest = await db.getFirstAsync<{ rest_seconds: number }>(
+        `SELECT rest_seconds FROM exercise_options WHERE slot_id = ? AND is_primary = 1 LIMIT 1`,
+        alt.slot_id
+      );
+      await db.runAsync(
+        `INSERT OR IGNORE INTO exercise_options
+           (id, slot_id, exercise_id, is_primary, rest_seconds, created_at)
+         VALUES (?, ?, ?, 0, ?, ?)`,
+        Crypto.randomUUID(), alt.slot_id, alt.alternative_exercise_id,
+        primaryRest?.rest_seconds ?? 90, alt.created_at
+      );
+    }
+
+    // Step 5: Populate exercise_option_id on existing workout_exercises
+    await db.execAsync(`
+      UPDATE workout_exercises SET exercise_option_id = (
+        SELECT eo.id FROM exercise_options eo
+        WHERE eo.slot_id = workout_exercises.slot_id
+          AND eo.exercise_id = workout_exercises.exercise_id
+        LIMIT 1
+      );
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

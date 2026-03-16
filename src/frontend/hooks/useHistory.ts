@@ -62,3 +62,17 @@ export function usePreviousSetsForExercises(exerciseIds: string[], seriesId?: st
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useWorkoutsByMonth(year: number, month: number) {
+  const db = useDatabase();
+  // month is 1-indexed
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const startDate = `${year}-${pad(month)}-01T00:00:00`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`;
+  return useQuery({
+    queryKey: ['workoutsByMonth', year, month],
+    queryFn: () => workoutService.getWorkoutSummariesByDateRange(db, startDate, endDate),
+    staleTime: 60 * 1000,
+  });
+}

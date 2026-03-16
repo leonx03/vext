@@ -1,5 +1,6 @@
 /** Workout service - orchestrates workout lifecycle, set logging, and exercise management. */
 import type * as SQLite from 'expo-sqlite';
+import * as Crypto from 'expo-crypto';
 import * as workout from '@backend/models/workout';
 import * as workoutExercise from '@backend/models/workoutExercise';
 import * as workoutSet from '@backend/models/workoutSet';
@@ -7,6 +8,10 @@ import * as workoutType from '@backend/models/workoutType';
 import * as exercise from '@backend/models/exercise';
 import * as supersetGroupModel from '@backend/models/supersetGroup';
 import * as workoutSeriesModel from '@backend/models/workoutSeries';
+import * as exerciseSlotModel from '@backend/models/exerciseSlot';
+import * as exerciseOptionModel from '@backend/models/exerciseOption';
+import * as exerciseAlternativeModel from '@backend/models/exerciseAlternative';
+import type { ExerciseAlternative } from '@backend/models/exerciseAlternative';
 import { getDefaultRestSeconds } from '@backend/services/timerService';
 import { APP_CONFIG } from '@config/app';
 import { validateWeight, validateReps, validateDuration, validateDistance } from '@shared/utils/validation';
@@ -44,16 +49,28 @@ export async function addExerciseToWorkout(
   exerciseId: string,
   restSeconds?: number,
   targetRepsMin?: number | null,
-  targetRepsMax?: number | null
+  targetRepsMax?: number | null,
+  slotId?: string
 ): Promise<WorkoutExercise> {
-  if (restSeconds != null) {
-    return workoutExercise.addToWorkout(db, workoutId, exerciseId, restSeconds, targetRepsMin, targetRepsMax);
-  }
   const ex = await exercise.getById(db, exerciseId);
-  const resolvedRest = ex
-    ? (ex.restSeconds ?? getDefaultRestSeconds(ex.category))
-    : APP_CONFIG.defaults.restSeconds.strength;
-  return workoutExercise.addToWorkout(db, workoutId, exerciseId, resolvedRest, targetRepsMin, targetRepsMax);
+  const resolvedRest = restSeconds != null
+    ? restSeconds
+    : (ex ? (ex.restSeconds ?? getDefaultRestSeconds(ex.category)) : APP_CONFIG.defaults.restSeconds.strength);
+  const resolvedSlotId = slotId ?? Crypto.randomUUID();
+
+  const w = await workout.getById(db, workoutId);
+  let exerciseOptionId: string | null = null;
+  if (w?.seriesId) {
+    await exerciseSlotModel.ensureExists(db, resolvedSlotId, w.seriesId);
+    const option = await exerciseOptionModel.ensureExists(
+      db, resolvedSlotId, exerciseId, true, resolvedRest, targetRepsMin, targetRepsMax
+    );
+    exerciseOptionId = option.id;
+  }
+
+  return workoutExercise.addToWorkout(
+    db, workoutId, exerciseId, resolvedRest, targetRepsMin, targetRepsMax, resolvedSlotId, exerciseOptionId
+  );
 }
 
 export async function continueWorkout(
@@ -84,7 +101,11 @@ export async function updateWorkoutExerciseRestSeconds(
   workoutExerciseId: string,
   restSeconds: number
 ): Promise<void> {
-  return workoutExercise.updateRestSeconds(db, workoutExerciseId, restSeconds);
+  await workoutExercise.updateRestSeconds(db, workoutExerciseId, restSeconds);
+  const ex = await workoutExercise.getById(db, workoutExerciseId);
+  if (ex?.exerciseOptionId) {
+    await exerciseOptionModel.updateRestSeconds(db, ex.exerciseOptionId, restSeconds);
+  }
 }
 
 export async function updateExerciseTargetReps(
@@ -93,7 +114,11 @@ export async function updateExerciseTargetReps(
   targetRepsMin: number | null,
   targetRepsMax: number | null
 ): Promise<void> {
-  return workoutExercise.updateTargetReps(db, workoutExerciseId, targetRepsMin, targetRepsMax);
+  await workoutExercise.updateTargetReps(db, workoutExerciseId, targetRepsMin, targetRepsMax);
+  const ex = await workoutExercise.getById(db, workoutExerciseId);
+  if (ex?.exerciseOptionId) {
+    await exerciseOptionModel.updateTargetReps(db, ex.exerciseOptionId, targetRepsMin, targetRepsMax);
+  }
 }
 
 export async function logSet(
@@ -326,6 +351,7 @@ export async function getWorkoutSummaries(
 ): Promise<WorkoutSummary[]> {
   type SummaryRow = {
     id: string;
+    series_id: string | null;
     name: string | null;
     workout_type_name: string;
     status: string;
@@ -340,6 +366,7 @@ export async function getWorkoutSummaries(
   const rows = await db.getAllAsync<SummaryRow>(
     `SELECT
        w.id,
+       w.series_id,
        COALESCE(ws_series.name, w.name) AS name,
        wt.name            AS workout_type_name,
        w.status,
@@ -356,7 +383,7 @@ export async function getWorkoutSummaries(
      LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id
      WHERE w.status = ?
      GROUP BY w.id
-     ORDER BY w.started_at DESC
+     ORDER BY ws_series.sort_order DESC, ws_series.created_at DESC, w.started_at DESC
      LIMIT ? OFFSET ?`,
     WorkoutStatus.Completed,
     limit,
@@ -387,6 +414,7 @@ export async function getWorkoutSummaries(
 
   return rows.map((row) => ({
     id: row.id,
+    seriesId: row.series_id,
     name: row.name,
     workoutTypeName: row.workout_type_name,
     status: row.status as WorkoutStatus,
@@ -423,7 +451,7 @@ export async function repeatWorkout(
   const groupIdMap = new Map<string, string>();
 
   for (const ex of source.exercises) {
-    const newExercise = await addExerciseToWorkout(db, newWorkout.id, ex.exerciseId, ex.restSeconds, ex.targetRepsMin, ex.targetRepsMax);
+    const newExercise = await addExerciseToWorkout(db, newWorkout.id, ex.exerciseId, ex.restSeconds, ex.targetRepsMin, ex.targetRepsMax, ex.slotId);
 
     if (ex.supersetGroupId) {
       if (!groupIdMap.has(ex.supersetGroupId)) {
@@ -478,4 +506,140 @@ export async function updateWorkoutSeriesName(
   const w = await workout.getById(db, workoutId);
   if (!w?.seriesId) throw new Error('Workout has no associated series');
   return workoutSeriesModel.updateName(db, w.seriesId, name);
+}
+
+export async function moveSeriesUp(
+  db: SQLite.SQLiteDatabase,
+  seriesId: string
+): Promise<void> {
+  return workoutSeriesModel.moveUp(db, seriesId);
+}
+
+export async function moveSeriesDown(
+  db: SQLite.SQLiteDatabase,
+  seriesId: string
+): Promise<void> {
+  return workoutSeriesModel.moveDown(db, seriesId);
+}
+
+export async function getWorkoutSummariesByDateRange(
+  db: SQLite.SQLiteDatabase,
+  startDate: string,
+  endDate: string
+): Promise<WorkoutSummary[]> {
+  type DateRangeSummaryRow = {
+    id: string;
+    series_id: string | null;
+    name: string | null;
+    workout_type_name: string;
+    status: string;
+    started_at: string;
+    completed_at: string | null;
+    exercise_count: number;
+    set_count: number;
+    total_volume: number | null;
+    elapsed_seconds: number;
+  };
+
+  const rows = await db.getAllAsync<DateRangeSummaryRow>(
+    `SELECT
+       w.id,
+       w.series_id,
+       COALESCE(ws_series.name, w.name) AS name,
+       wt.name            AS workout_type_name,
+       w.status,
+       w.started_at,
+       w.completed_at,
+       w.elapsed_seconds,
+       COUNT(DISTINCT we.id)                        AS exercise_count,
+       COUNT(ws.id)                                 AS set_count,
+       COALESCE(SUM(ws.weight_kg * ws.reps), 0)     AS total_volume
+     FROM workouts w
+     JOIN workout_types wt ON wt.id = w.workout_type_id
+     LEFT JOIN workout_series ws_series ON ws_series.id = w.series_id
+     LEFT JOIN workout_exercises we ON we.workout_id = w.id
+     LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id
+     WHERE w.status = ? AND w.started_at >= ? AND w.started_at <= ?
+     GROUP BY w.id
+     ORDER BY w.started_at DESC`,
+    WorkoutStatus.Completed,
+    startDate,
+    endDate
+  );
+
+  if (rows.length === 0) return [];
+
+  const workoutIds = rows.map((r) => r.id);
+  const placeholders = workoutIds.map(() => '?').join(', ');
+  const muscleRows = await db.getAllAsync<{ workout_id: string; muscle_group: string; set_count: number }>(
+    `SELECT we.workout_id, jm.value AS muscle_group, COUNT(ws.id) AS set_count
+     FROM workout_exercises we
+     JOIN exercises e ON e.id = we.exercise_id
+     JOIN json_each(e.primary_muscles) jm
+     JOIN workout_sets ws ON ws.workout_exercise_id = we.id
+     WHERE we.workout_id IN (${placeholders})
+     GROUP BY we.workout_id, jm.value`,
+    ...workoutIds
+  );
+
+  const muscleMap = new Map<string, Record<string, number>>();
+  for (const mr of muscleRows) {
+    if (!muscleMap.has(mr.workout_id)) muscleMap.set(mr.workout_id, {});
+    muscleMap.get(mr.workout_id)![mr.muscle_group] = mr.set_count;
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    seriesId: row.series_id,
+    name: row.name,
+    workoutTypeName: row.workout_type_name,
+    status: row.status as WorkoutStatus,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    exerciseCount: row.exercise_count,
+    setCount: row.set_count,
+    totalVolume: row.total_volume ?? 0,
+    elapsedSeconds: row.elapsed_seconds,
+    muscleGroupSets: muscleMap.get(row.id) ?? {},
+  }));
+}
+
+export async function getExerciseAlternatives(
+  db: SQLite.SQLiteDatabase,
+  slotId: string
+): Promise<ExerciseAlternative[]> {
+  return exerciseAlternativeModel.getAlternatives(db, slotId);
+}
+
+export async function addExerciseAlternative(
+  db: SQLite.SQLiteDatabase,
+  slotId: string,
+  alternativeExerciseId: string
+): Promise<ExerciseAlternative> {
+  return exerciseAlternativeModel.addAlternative(db, slotId, alternativeExerciseId);
+}
+
+export async function removeExerciseAlternative(
+  db: SQLite.SQLiteDatabase,
+  id: string
+): Promise<void> {
+  return exerciseAlternativeModel.removeAlternative(db, id);
+}
+
+export async function switchWorkoutExercise(
+  db: SQLite.SQLiteDatabase,
+  workoutExerciseId: string,
+  newExerciseId: string
+): Promise<void> {
+  const ex = await workoutExercise.getById(db, workoutExerciseId);
+  await workoutExercise.updateExerciseId(db, workoutExerciseId, newExerciseId);
+  if (ex?.slotId) {
+    const option = await exerciseOptionModel.ensureExists(
+      db, ex.slotId, newExerciseId, true, ex.restSeconds, ex.targetRepsMin, ex.targetRepsMax
+    );
+    await workoutExercise.updateExerciseOptionId(db, workoutExerciseId, option.id);
+    // Apply the option's stored settings to the current session row
+    await workoutExercise.updateRestSeconds(db, workoutExerciseId, option.restSeconds);
+    await workoutExercise.updateTargetReps(db, workoutExerciseId, option.targetRepsMin, option.targetRepsMax);
+  }
 }

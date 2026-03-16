@@ -10,6 +10,8 @@ interface WorkoutExerciseRow {
   id: string;
   workout_id: string;
   exercise_id: string;
+  slot_id: string;
+  exercise_option_id: string | null;
   sort_order: number;
   rest_seconds: number;
   target_reps_min: number | null;
@@ -30,6 +32,8 @@ function mapRow(row: WorkoutExerciseRow): WorkoutExercise {
     id: row.id,
     workoutId: row.workout_id,
     exerciseId: row.exercise_id,
+    slotId: row.slot_id,
+    exerciseOptionId: row.exercise_option_id,
     sortOrder: row.sort_order,
     restSeconds: row.rest_seconds,
     targetRepsMin: row.target_reps_min,
@@ -56,24 +60,29 @@ export async function addToWorkout(
   exerciseId: string,
   restSeconds: number,
   targetRepsMin?: number | null,
-  targetRepsMax?: number | null
+  targetRepsMax?: number | null,
+  slotId?: string,
+  exerciseOptionId?: string | null
 ): Promise<WorkoutExercise> {
   const id = Crypto.randomUUID();
+  const resolvedSlotId = slotId ?? id;
   await db.runAsync(
-    `INSERT INTO workout_exercises (id, workout_id, exercise_id, sort_order, rest_seconds, target_reps_min, target_reps_max, created_at)
+    `INSERT INTO workout_exercises (id, workout_id, exercise_id, slot_id, sort_order, rest_seconds, target_reps_min, target_reps_max, exercise_option_id, created_at)
      VALUES (
-       ?, ?, ?,
+       ?, ?, ?, ?,
        COALESCE((SELECT MAX(sort_order) + 1 FROM workout_exercises WHERE workout_id = ?), 0),
-       ?, ?, ?,
+       ?, ?, ?, ?,
        datetime('now')
      )`,
     id,
     workoutId,
     exerciseId,
+    resolvedSlotId,
     workoutId,
     restSeconds,
     targetRepsMin ?? null,
-    targetRepsMax ?? null
+    targetRepsMax ?? null,
+    exerciseOptionId ?? null
   );
   const row = await db.getFirstAsync<WorkoutExerciseRow>(
     `SELECT * FROM workout_exercises WHERE id = ?`,
@@ -117,6 +126,18 @@ export async function removeFromWorkout(
   });
 }
 
+export async function updateExerciseId(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  newExerciseId: string
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE workout_exercises SET exercise_id = ? WHERE id = ?`,
+    newExerciseId,
+    id
+  );
+}
+
 export async function updateRestSeconds(
   db: SQLite.SQLiteDatabase,
   id: string,
@@ -139,6 +160,18 @@ export async function updateTargetReps(
     `UPDATE workout_exercises SET target_reps_min = ?, target_reps_max = ? WHERE id = ?`,
     targetRepsMin,
     targetRepsMax,
+    id
+  );
+}
+
+export async function updateExerciseOptionId(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  exerciseOptionId: string | null
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE workout_exercises SET exercise_option_id = ? WHERE id = ?`,
+    exerciseOptionId,
     id
   );
 }

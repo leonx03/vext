@@ -9,6 +9,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
   index: { active: 'home', inactive: 'home-outline' },
   workouts: { active: 'time', inactive: 'time-outline' },
+  calendar: { active: 'calendar', inactive: 'calendar-outline' },
   exercises: { active: 'barbell', inactive: 'barbell-outline' },
   profile: { active: 'person', inactive: 'person-outline' },
 };

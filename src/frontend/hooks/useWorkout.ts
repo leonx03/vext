@@ -4,6 +4,7 @@ import * as workoutService from '@backend/services/workoutService';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import type { WorkoutSetInput } from '@backend/models/workoutSet';
 import type { WorkoutFull } from '@shared/types/workout';
+import type { ExerciseAlternative } from '@backend/models/exerciseAlternative';
 
 export function useActiveWorkout() {
   const db = useDatabase();
@@ -133,6 +134,7 @@ export function useCompleteWorkout() {
       queryClient.invalidateQueries({ queryKey: ['activeWorkout'] });
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
       queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['previousSets'] });
       queryClient.invalidateQueries({ queryKey: ['todayStats'] });
       queryClient.invalidateQueries({ queryKey: ['weeklyStats'] });
       queryClient.invalidateQueries({ queryKey: ['currentStreak'] });
@@ -176,6 +178,7 @@ export function useDeleteWorkout() {
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
       queryClient.invalidateQueries({ queryKey: ['workoutHistoryCount'] });
       queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['previousSets'] });
       queryClient.invalidateQueries({ queryKey: ['todayStats'] });
       queryClient.invalidateQueries({ queryKey: ['weeklyStats'] });
       queryClient.invalidateQueries({ queryKey: ['currentStreak'] });
@@ -193,6 +196,7 @@ export function useDeleteWorkouts() {
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
       queryClient.invalidateQueries({ queryKey: ['workoutHistoryCount'] });
       queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['previousSets'] });
       queryClient.invalidateQueries({ queryKey: ['todayStats'] });
       queryClient.invalidateQueries({ queryKey: ['weeklyStats'] });
       queryClient.invalidateQueries({ queryKey: ['currentStreak'] });
@@ -327,6 +331,74 @@ export function useUpdateWorkoutName() {
       queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
       queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
       queryClient.invalidateQueries({ queryKey: ['recentWorkouts'] });
+    },
+  });
+}
+
+export function useMoveSeriesUp() {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (seriesId: string) => workoutService.moveSeriesUp(db, seriesId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
+    },
+  });
+}
+
+export function useMoveSeriesDown() {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (seriesId: string) => workoutService.moveSeriesDown(db, seriesId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
+    },
+  });
+}
+
+export function useExerciseAlternatives(slotId: string | null | undefined) {
+  const db = useDatabase();
+  return useQuery<ExerciseAlternative[]>({
+    queryKey: ['exerciseAlternatives', slotId ?? 'none'],
+    queryFn: () => workoutService.getExerciseAlternatives(db, slotId!),
+    enabled: !!slotId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAddExerciseAlternative(slotId: string | null | undefined) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (alternativeExerciseId: string) =>
+      workoutService.addExerciseAlternative(db, slotId!, alternativeExerciseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exerciseAlternatives', slotId ?? 'none'] });
+    },
+  });
+}
+
+export function useRemoveExerciseAlternative(slotId: string | null | undefined) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (alternativeId: string) => workoutService.removeExerciseAlternative(db, alternativeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exerciseAlternatives', slotId ?? 'none'] });
+    },
+  });
+}
+
+export function useSwitchWorkoutExercise(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workoutExerciseId, newExerciseId }: { workoutExerciseId: string; newExerciseId: string }) =>
+      workoutService.switchWorkoutExercise(db, workoutExerciseId, newExerciseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+      queryClient.invalidateQueries({ queryKey: ['previousSets'] });
     },
   });
 }

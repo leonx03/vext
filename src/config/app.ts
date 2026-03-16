@@ -2,7 +2,7 @@
 export const APP_CONFIG = {
   database: {
     name: 'vext.db',
-    schemaVersion: 8,
+    schemaVersion: 12,
   },
   defaults: {
     restSeconds: {
