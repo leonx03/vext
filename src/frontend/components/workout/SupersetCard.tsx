@@ -4,6 +4,7 @@ import { View, Text, Pressable, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SetRow } from './SetRow';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
+import { SupersetAlternativesModal } from './SupersetAlternativesModal';
 import type { WorkoutExerciseFull, WorkoutSet, SupersetGroup } from '@shared/types/workout';
 
 function parseRepRange(input: string): { min: number | null; max: number | null } {
@@ -38,6 +39,8 @@ type SupersetCardProps = {
   onUpdateTargetReps: (workoutExerciseId: string, min: number | null, max: number | null) => void;
   onLogSet: (workoutExerciseId: string, data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
   onStartRest: () => void;
+  seriesId?: string | null;
+  onSwitchToAlternative?: (workoutExerciseId: string, newExerciseId: string) => void;
 };
 
 export const SupersetCard = React.memo(function SupersetCard({
@@ -57,6 +60,8 @@ export const SupersetCard = React.memo(function SupersetCard({
   onUpdateTargetReps,
   onLogSet,
   onStartRest,
+  seriesId,
+  onSwitchToAlternative,
 }: SupersetCardProps) {
   const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
@@ -67,6 +72,7 @@ export const SupersetCard = React.memo(function SupersetCard({
   );
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
+  const [showAlternatives, setShowAlternatives] = useState(false);
 
   const hasAnyRepGoal = exercises.some((ex) => ex.targetRepsMin != null);
   const numRounds = Math.max(0, ...exercises.map((ex) => ex.sets.length));
@@ -144,6 +150,15 @@ export const SupersetCard = React.memo(function SupersetCard({
             <Text className="ml-1 text-xs text-foreground-muted">
               {hasAnyRepGoal ? 'Rep Goals' : 'Set rep goals'}
             </Text>
+          </Pressable>
+        )}
+        {seriesId && onSwitchToAlternative && (
+          <Pressable
+            onPress={() => setShowAlternatives(true)}
+            className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+          >
+            <Ionicons name="swap-horizontal-outline" size={14} color="rgb(163, 163, 163)" />
+            <Text className="ml-1 text-xs text-foreground-muted">Swap</Text>
           </Pressable>
         )}
       </View>
@@ -301,6 +316,17 @@ export const SupersetCard = React.memo(function SupersetCard({
         }}
         onCancel={() => setShowDisbandConfirm(false)}
       />
+
+      {showAlternatives && seriesId && onSwitchToAlternative && (
+        <SupersetAlternativesModal
+          onClose={() => setShowAlternatives(false)}
+          exercises={exercises}
+          seriesId={seriesId}
+          onSwitch={(workoutExerciseId, newExerciseId) => {
+            onSwitchToAlternative(workoutExerciseId, newExerciseId);
+          }}
+        />
+      )}
 
       {/* Rep goal dialog */}
       <Modal

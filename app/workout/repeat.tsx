@@ -1,27 +1,61 @@
-/** Repeat workout screen - start a new workout pre-populated from a previous session. */
-import React from 'react';
+/** Repeat workout screen - pick a workout group to repeat its latest session. */
+import React, { useMemo } from 'react';
 import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { WorkoutCard } from '@frontend/components/workout/WorkoutCard';
 import { EmptyState } from '@frontend/components/EmptyState';
 import { useWorkoutHistory } from '@frontend/hooks/useHistory';
 import { useRepeatWorkout } from '@frontend/hooks/useWorkout';
 import { cn } from '@frontend/lib/utils';
+import type { WorkoutSummary } from '@shared/types/workout';
+
+interface WorkoutGroupItem {
+  key: string;
+  displayName: string;
+  workoutTypeName: string;
+  sessionCount: number;
+  latestId: string;
+}
+
+function getBaseName(name: string | null, typeName: string): string {
+  if (!name) return typeName;
+  return name.replace(/\s*\(#\d+\)$/, '');
+}
+
+function groupWorkouts(workouts: WorkoutSummary[]): WorkoutGroupItem[] {
+  const map = new Map<string, WorkoutGroupItem>();
+  for (const w of workouts) {
+    const baseName = getBaseName(w.name, w.workoutTypeName);
+    const key = `${w.workoutTypeName}::${baseName}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.sessionCount++;
+    } else {
+      map.set(key, {
+        key,
+        displayName: baseName,
+        workoutTypeName: w.workoutTypeName,
+        sessionCount: 1,
+        latestId: w.id,
+      });
+    }
+  }
+  return Array.from(map.values());
+}
 
 export default function RepeatWorkoutScreen() {
   const router = useRouter();
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useWorkoutHistory();
   const repeatWorkout = useRepeatWorkout();
 
-  const workouts = data?.pages.flatMap((page) => page) ?? [];
+  const workouts = useMemo(() => data?.pages.flatMap((page) => page) ?? [], [data]);
+  const groups = useMemo(() => groupWorkouts(workouts), [workouts]);
 
   const handleRepeat = async (workoutId: string) => {
     try {
       const newWorkout = await repeatWorkout.mutateAsync(workoutId);
       router.replace(`/workout/${newWorkout.id}`);
     } catch (e) {
-      // mutation errors shown inline via repeatWorkout.error
       if (__DEV__) console.warn('Repeat workout failed:', e);
     }
   };
@@ -36,7 +70,7 @@ export default function RepeatWorkoutScreen() {
       </View>
 
       <Text className="px-4 mb-3 text-sm text-foreground-muted">
-        Choose a completed workout to repeat its exercises
+        Choose a workout to repeat its exercises
       </Text>
 
       {repeatWorkout.error && (
@@ -53,10 +87,10 @@ export default function RepeatWorkoutScreen() {
       )}
 
       <FlatList
-        data={workouts}
-        keyExtractor={(item) => item.id}
+        data={groups}
+        keyExtractor={(item) => item.key}
         className="flex-1 px-4"
-        contentContainerClassName={cn(workouts.length === 0 ? 'flex-1' : 'pb-[100px]')}
+        contentContainerClassName={cn(groups.length === 0 ? 'flex-1' : 'pb-[100px]')}
         onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
         onEndReachedThreshold={0.3}
         ListEmptyComponent={
@@ -80,10 +114,22 @@ export default function RepeatWorkoutScreen() {
           ) : null
         }
         renderItem={({ item }) => (
-          <WorkoutCard
-            workout={item}
-            onPress={() => handleRepeat(item.id)}
-          />
+          <Pressable
+            onPress={() => handleRepeat(item.latestId)}
+            className="mb-3 rounded-xl bg-background-50 p-4"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-foreground">{item.displayName}</Text>
+                <Text className="text-xs text-foreground-muted mt-0.5">
+                  {item.workoutTypeName} · {item.sessionCount} session{item.sessionCount !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              <View className="rounded-lg bg-primary/15 px-3 py-1.5">
+                <Text className="text-xs font-semibold text-primary">Repeat</Text>
+              </View>
+            </View>
+          </Pressable>
         )}
       />
     </View>

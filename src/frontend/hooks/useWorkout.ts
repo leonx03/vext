@@ -399,6 +399,7 @@ export function useSwitchWorkoutExercise(workoutId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
       queryClient.invalidateQueries({ queryKey: ['previousSets'] });
+      queryClient.invalidateQueries({ queryKey: ['exerciseAlternatives'] });
     },
   });
 }
