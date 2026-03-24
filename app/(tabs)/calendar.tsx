@@ -2,12 +2,14 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useWorkoutsByMonth } from '@frontend/hooks/useHistory';
 import {
   useScheduledWorkoutsByMonth,
   useAllWorkoutSeries,
   useScheduleWorkout,
   useCancelScheduledWorkout,
+  useStartScheduledWorkout,
 } from '@frontend/hooks/useScheduledWorkouts';
 import { parseUTCTimestamp, formatDuration } from '@shared/utils/formatting';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
@@ -35,6 +37,7 @@ function getTodayKey(): string {
 }
 
 export default function AgendaScreen() {
+  const router = useRouter();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -47,6 +50,7 @@ export default function AgendaScreen() {
   const { data: allSeries } = useAllWorkoutSeries();
   const scheduleWorkout = useScheduleWorkout();
   const cancelScheduled = useCancelScheduledWorkout();
+  const startScheduled = useStartScheduledWorkout();
 
   const isLoading = workoutsLoading || scheduledLoading;
 
@@ -65,6 +69,7 @@ export default function AgendaScreen() {
   const scheduledByDay = React.useMemo(() => {
     const map = new Map<string, ScheduledWorkout[]>();
     for (const s of scheduled ?? []) {
+      if (s.workoutStatus === 'completed') continue;
       if (!map.has(s.scheduledDate)) map.set(s.scheduledDate, []);
       map.get(s.scheduledDate)!.push(s);
     }
@@ -88,6 +93,15 @@ export default function AgendaScreen() {
     if (month === 12) { setYear(y => y + 1); setMonth(1); }
     else setMonth(m => m + 1);
     setSelectedDate(null);
+  };
+
+  const handleStartScheduled = async (s: ScheduledWorkout) => {
+    try {
+      const workout = await startScheduled.mutateAsync({ scheduledId: s.id, seriesId: s.seriesId });
+      router.replace(`/workout/${workout.id}`);
+    } catch (e) {
+      if (__DEV__) console.warn('Start scheduled workout failed:', e);
+    }
   };
 
   const handleSchedule = (seriesId: string) => {
@@ -203,8 +217,16 @@ export default function AgendaScreen() {
                       {!s.startedWorkoutId && (
                         <View className="flex-row gap-2">
                           <Pressable
+                            onPress={() => handleStartScheduled(s)}
+                            disabled={startScheduled.isPending}
+                            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-primary py-2"
+                          >
+                            <Ionicons name="play" size={16} color="rgb(10, 10, 10)" />
+                            <Text className="text-xs font-semibold text-background">Start</Text>
+                          </Pressable>
+                          <Pressable
                             onPress={() => setCancelTarget(s)}
-                            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-background-100 py-2"
+                            className="flex-row items-center justify-center gap-1.5 rounded-lg border border-background-100 px-4 py-2"
                           >
                             <Ionicons name="close-outline" size={16} color="rgb(163, 163, 163)" />
                             <Text className="text-xs text-foreground-muted">Remove</Text>

@@ -7,7 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as workoutTypeModel from '@backend/models/workoutType';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import { useStartWorkout } from '@frontend/hooks/useWorkout';
+import { useTodayScheduledWorkouts, useStartScheduledWorkout } from '@frontend/hooks/useScheduledWorkouts';
 import type { WorkoutType } from '@shared/types/workout';
+import type { ScheduledWorkout } from '@shared/types/scheduledWorkout';
 
 const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Strength: 'barbell-outline',
@@ -15,7 +17,7 @@ const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Flexibility: 'body-outline',
 };
 
-type Mode = 'choice' | 'type-picker';
+type Mode = 'choice' | 'type-picker' | 'planned-picker';
 
 export default function NewWorkoutScreen() {
   const db = useDatabase();
@@ -24,6 +26,10 @@ export default function NewWorkoutScreen() {
   const [selectedType, setSelectedType] = useState<WorkoutType | null>(null);
   const [workoutName, setWorkoutName] = useState('');
   const startWorkout = useStartWorkout();
+  const { data: todayPlanned } = useTodayScheduledWorkouts();
+  const startScheduled = useStartScheduledWorkout();
+
+  const unstartedPlanned = todayPlanned?.filter((s) => !s.startedWorkoutId) ?? [];
 
   const { data: types, isLoading } = useQuery({
     queryKey: ['workoutTypes'],
@@ -44,8 +50,25 @@ export default function NewWorkoutScreen() {
     }
   };
 
+  const handleStartPlanned = async (s: ScheduledWorkout) => {
+    try {
+      const workout = await startScheduled.mutateAsync({ scheduledId: s.id, seriesId: s.seriesId });
+      router.replace(`/workout/${workout.id}`);
+    } catch (e) {
+      if (__DEV__) console.warn('Start planned workout failed:', e);
+    }
+  };
+
+  const handlePlannedPress = () => {
+    if (unstartedPlanned.length === 1) {
+      handleStartPlanned(unstartedPlanned[0]);
+    } else {
+      setMode('planned-picker');
+    }
+  };
+
   const handleBack = () => {
-    if (mode === 'type-picker') {
+    if (mode === 'type-picker' || mode === 'planned-picker') {
       setMode('choice');
       setSelectedType(null);
       setWorkoutName('');
@@ -104,7 +127,89 @@ export default function NewWorkoutScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="rgb(163, 163, 163)" />
           </Pressable>
+
+          {unstartedPlanned.length > 0 && (
+            <Pressable
+              onPress={handlePlannedPress}
+              disabled={startScheduled.isPending}
+              className="rounded-xl bg-background-50 p-5 flex-row items-center"
+            >
+              <View className="w-12 h-12 rounded-full bg-amber-400/20 items-center justify-center">
+                <Ionicons name="calendar-outline" size={24} color="rgb(251, 191, 36)" />
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="text-base font-semibold text-foreground">Start Planned Workout</Text>
+                <Text className="text-sm text-foreground-muted mt-0.5">
+                  {unstartedPlanned.length === 1
+                    ? unstartedPlanned[0].seriesName
+                    : `${unstartedPlanned.length} workouts planned for today`}
+                </Text>
+              </View>
+              {unstartedPlanned.length > 1 && (
+                <Ionicons name="chevron-forward" size={20} color="rgb(163, 163, 163)" />
+              )}
+            </Pressable>
+          )}
         </View>
+
+        {startScheduled.isPending && (
+          <View className="absolute inset-0 z-10 items-center justify-center bg-background/80">
+            <ActivityIndicator size="large" color="rgb(52, 211, 153)" />
+            <Text className="mt-3 text-sm text-foreground-muted">Starting workout...</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  if (mode === 'planned-picker') {
+    return (
+      <View className="flex-1 bg-background">
+        <View className="flex-row items-center px-4 py-3">
+          <Pressable onPress={handleBack} className="mr-3 p-1">
+            <Ionicons name="arrow-back" size={24} color="rgb(250, 250, 250)" />
+          </Pressable>
+          <Text className="text-xl font-bold text-foreground">Planned for Today</Text>
+        </View>
+
+        <Text className="px-4 mb-3 text-sm text-foreground-muted">
+          Choose a planned workout to start
+        </Text>
+
+        {startScheduled.error && (
+          <Text className="px-4 mb-2 text-xs text-destructive">
+            {(startScheduled.error as Error)?.message || 'An error occurred'}
+          </Text>
+        )}
+
+        {startScheduled.isPending && (
+          <View className="absolute inset-0 z-10 items-center justify-center bg-background/80">
+            <ActivityIndicator size="large" color="rgb(52, 211, 153)" />
+            <Text className="mt-3 text-sm text-foreground-muted">Starting workout...</Text>
+          </View>
+        )}
+
+        <FlatList
+          data={unstartedPlanned}
+          keyExtractor={(item) => item.id}
+          className="px-4"
+          contentContainerClassName="pb-[100px]"
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => handleStartPlanned(item)}
+              className="mb-3 rounded-xl bg-background-50 p-4"
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-foreground">{item.seriesName}</Text>
+                </View>
+                <View className="rounded-lg bg-primary/15 px-3 py-1.5">
+                  <Text className="text-xs font-semibold text-primary">Start</Text>
+                </View>
+              </View>
+            </Pressable>
+          )}
+        />
       </View>
     );
   }

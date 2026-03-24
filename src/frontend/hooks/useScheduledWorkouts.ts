@@ -60,15 +60,27 @@ export function useCancelScheduledWorkout() {
   });
 }
 
+export function useTodayScheduledWorkouts() {
+  const db = useDatabase();
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return useQuery({
+    queryKey: ['scheduledWorkouts', 'today', today],
+    queryFn: () => scheduledWorkoutService.getScheduledByDate(db, today),
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useStartScheduledWorkout() {
   const db = useDatabase();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ scheduledId, seriesId, workoutTypeId }: { scheduledId: string; seriesId: string; workoutTypeId: string }) =>
-      scheduledWorkoutService.startScheduledWorkout(db, scheduledId, seriesId, workoutTypeId),
+    mutationFn: ({ scheduledId, seriesId }: { scheduledId: string; seriesId: string }) =>
+      scheduledWorkoutService.startScheduledWorkout(db, scheduledId, seriesId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
       queryClient.invalidateQueries({ queryKey: ['activeWorkout'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
     },
   });
 }

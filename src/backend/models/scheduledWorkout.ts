@@ -10,6 +10,7 @@ interface ScheduledWorkoutRow {
   scheduled_date: string;
   notes: string | null;
   started_workout_id: string | null;
+  workout_status: string | null;
   created_at: string;
 }
 
@@ -21,14 +22,16 @@ function mapRow(row: ScheduledWorkoutRow): ScheduledWorkout {
     scheduledDate: row.scheduled_date,
     notes: row.notes,
     startedWorkoutId: row.started_workout_id,
+    workoutStatus: row.workout_status,
     createdAt: row.created_at,
   };
 }
 
 const SELECT_WITH_JOIN = `
-  SELECT sw.*, ws.name AS series_name
+  SELECT sw.*, ws.name AS series_name, w.status AS workout_status
   FROM scheduled_workouts sw
   JOIN workout_series ws ON ws.id = sw.series_id
+  LEFT JOIN workouts w ON w.id = sw.started_workout_id
 `;
 
 export async function create(
