@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as progressService from '@backend/services/progressService';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import { useSettingsStore } from '@backend/store/settingsStore';
+import { useBodyWeightTrend } from '@frontend/hooks/useBodyWeight';
+import { WeightSparkline } from '@frontend/components/profile/WeightSparkline';
 import { MUSCLE_GROUP_LABELS } from '@shared/constants/muscleGroups';
 import type { MuscleGroup } from '@shared/types/exercise';
 
@@ -61,6 +63,8 @@ export default function HomeScreen() {
     queryFn: () => progressService.getWeeklySetsByMuscleGroup(db, weekStart, weekEnd),
     staleTime: 60 * 1000,
   });
+
+  const { data: weightTrend } = useBodyWeightTrend(30);
 
   const { data: weeklyPRCount } = useQuery({
     queryKey: ['weeklyPRCount', weekOffset],
@@ -152,6 +156,14 @@ export default function HomeScreen() {
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Body Weight Trend */}
+        {weightTrend && weightTrend.length > 0 && (
+          <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4">
+            <Text className="text-sm font-medium text-foreground-muted mb-3">Body Weight</Text>
+            <WeightSparkline entries={weightTrend} units={units} />
           </View>
         )}
       </ScrollView>

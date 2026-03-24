@@ -38,6 +38,28 @@ export async function create(
   return mapRow(row);
 }
 
+export async function getAll(db: SQLite.SQLiteDatabase): Promise<WorkoutSeries[]> {
+  const rows = await db.getAllAsync<WorkoutSeriesRow>(
+    'SELECT * FROM workout_series ORDER BY sort_order DESC'
+  );
+  return rows.map(mapRow);
+}
+
+export async function getAllWithCompletedWorkouts(db: SQLite.SQLiteDatabase): Promise<WorkoutSeries[]> {
+  const rows = await db.getAllAsync<WorkoutSeriesRow>(
+    `SELECT ws.* FROM workout_series ws
+     WHERE ws.id IN (
+       SELECT ws2.id FROM workout_series ws2
+       JOIN workouts w ON w.series_id = ws2.id
+       WHERE w.status = 'completed'
+       GROUP BY ws2.name
+       HAVING ws2.id = MAX(ws2.id)
+     )
+     ORDER BY ws.sort_order DESC`
+  );
+  return rows.map(mapRow);
+}
+
 export async function getById(
   db: SQLite.SQLiteDatabase,
   id: string

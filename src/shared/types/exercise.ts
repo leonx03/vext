@@ -2,7 +2,9 @@
 export enum MuscleGroup {
   Chest = 'chest',
   Back = 'back',
-  Shoulders = 'shoulders',
+  FrontDelt = 'front_delt',
+  SideDelt = 'side_delt',
+  RearDelt = 'rear_delt',
   Biceps = 'biceps',
   Triceps = 'triceps',
   Quads = 'quads',

@@ -361,6 +361,42 @@ const migrations: Migration[] = [
       );
     `);
   },
+  // v12 → v13: Replace 'shoulders' muscle group with granular delt sub-groups (front_delt, side_delt, rear_delt)
+  async (db) => {
+    await db.execAsync(`
+      UPDATE exercises
+      SET primary_muscles = REPLACE(primary_muscles, '"shoulders"', '"front_delt"')
+      WHERE primary_muscles LIKE '%"shoulders"%';
+    `);
+  },
+  // v13 → v14: Add body_weight_entries table for weight tracking
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE body_weight_entries (
+        id TEXT PRIMARY KEY NOT NULL,
+        weight_kg REAL NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE UNIQUE INDEX idx_body_weight_date ON body_weight_entries(date);
+    `);
+  },
+  // v14 → v15: Add scheduled_workouts table for future workout planning
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE scheduled_workouts (
+        id TEXT PRIMARY KEY NOT NULL,
+        series_id TEXT NOT NULL REFERENCES workout_series(id) ON DELETE CASCADE,
+        scheduled_date TEXT NOT NULL,
+        notes TEXT,
+        started_workout_id TEXT REFERENCES workouts(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_scheduled_workouts_date ON scheduled_workouts(scheduled_date);
+      CREATE INDEX idx_scheduled_workouts_series ON scheduled_workouts(series_id);
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

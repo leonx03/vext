@@ -632,6 +632,9 @@ export async function switchWorkoutExercise(
   newExerciseId: string
 ): Promise<void> {
   const ex = await workoutExercise.getById(db, workoutExerciseId);
+  if (ex?.slotId && ex?.exerciseId) {
+    await exerciseAlternativeModel.addAlternative(db, ex.slotId, ex.exerciseId);
+  }
   await workoutExercise.updateExerciseId(db, workoutExerciseId, newExerciseId);
   if (ex?.slotId) {
     const option = await exerciseOptionModel.ensureExists(

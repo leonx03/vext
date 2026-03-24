@@ -235,6 +235,10 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
                 }
                 onLogSet={(workoutExerciseId, data) => logSet.mutate({ workoutExerciseId, data })}
                 onStartRest={() => startTimer(group.restSeconds)}
+                seriesId={workout.seriesId}
+                onSwitchToAlternative={(workoutExerciseId, newExerciseId) =>
+                  switchExercise.mutate({ workoutExerciseId, newExerciseId })
+                }
               />
             );
           })

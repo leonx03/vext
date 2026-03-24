@@ -20,11 +20,11 @@ export const SEED_EXERCISES: ExerciseSeed[] = [
   { name: 'Dumbbell Single-Arm Row', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Dumbbell, instructions: 'One knee on bench, pull dumbbell to hip, lower with control.' },
 
   // === SHOULDERS (Strength) ===
-  { name: 'Overhead Press', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Shoulders], equipment: Equipment.Barbell, instructions: 'Stand with bar at shoulder height, press overhead, lower with control.' },
-  { name: 'Dumbbell Lateral Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Shoulders], equipment: Equipment.Dumbbell, instructions: 'Stand with dumbbells at sides, raise arms to shoulder height, lower slowly.' },
-  { name: 'Dumbbell Shoulder Press', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Shoulders], equipment: Equipment.Dumbbell, instructions: 'Sit or stand, press dumbbells from shoulder height overhead.' },
-  { name: 'Face Pull', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Shoulders], equipment: Equipment.Cable, instructions: 'Set cable at face height, pull rope to face with elbows high, squeeze rear delts.' },
-  { name: 'Dumbbell Front Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Shoulders], equipment: Equipment.Dumbbell, instructions: 'Stand with dumbbells in front of thighs, raise one or both arms to shoulder height.' },
+  { name: 'Overhead Press', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.FrontDelt], equipment: Equipment.Barbell, instructions: 'Stand with bar at shoulder height, press overhead, lower with control.' },
+  { name: 'Dumbbell Lateral Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.SideDelt], equipment: Equipment.Dumbbell, instructions: 'Stand with dumbbells at sides, raise arms to shoulder height, lower slowly.' },
+  { name: 'Dumbbell Shoulder Press', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.FrontDelt], equipment: Equipment.Dumbbell, instructions: 'Sit or stand, press dumbbells from shoulder height overhead.' },
+  { name: 'Face Pull', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.RearDelt], equipment: Equipment.Cable, instructions: 'Set cable at face height, pull rope to face with elbows high, squeeze rear delts.' },
+  { name: 'Dumbbell Front Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.FrontDelt], equipment: Equipment.Dumbbell, instructions: 'Stand with dumbbells in front of thighs, raise one or both arms to shoulder height.' },
 
   // === BICEPS (Strength) ===
   { name: 'Barbell Curl', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Biceps], equipment: Equipment.Barbell, instructions: 'Stand with bar at arm length, curl to shoulders keeping elbows stationary.' },
