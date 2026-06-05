@@ -158,8 +158,11 @@ export async function getByWorkout(
 
 /**
  * Returns all sets from the most recent completed workout containing the given exercise
- * within the same series. If seriesId is null/undefined (standalone workout), returns empty.
- * Used to show "Last time" reference data on ExerciseCard.
+ * within the same series, skipping workouts where the exercise was logged with no recorded
+ * value (no weight/duration/distance). This way the "Last time" reference always reflects
+ * the last session where something was actually entered — leaving an exercise blank one
+ * session falls back to the session before it rather than showing 0.
+ * If seriesId is null/undefined (standalone workout), returns empty.
  */
 export async function getLatestSetsForExercise(
   db: SQLite.SQLiteDatabase,
@@ -169,24 +172,31 @@ export async function getLatestSetsForExercise(
   // New standalone workouts (no series) should show no reference weights
   if (!seriesId) return [];
 
-  const rows = await db.getAllAsync<WorkoutSetRow>(
-    `SELECT ws.*
-     FROM workout_sets ws
-     JOIN workout_exercises we ON we.id = ws.workout_exercise_id
+  // Pick the most recent completed workout-exercise that has at least one recorded set.
+  const latest = await db.getFirstAsync<{ workout_exercise_id: string }>(
+    `SELECT we.id AS workout_exercise_id
+     FROM workout_exercises we
      JOIN workouts w ON w.id = we.workout_id
      WHERE we.exercise_id = ?
        AND w.status = 'completed'
        AND w.series_id = ?
-     ORDER BY w.completed_at DESC, ws.set_number ASC`,
+       AND EXISTS (
+         SELECT 1 FROM workout_sets ws
+         WHERE ws.workout_exercise_id = we.id
+           AND (ws.weight_kg IS NOT NULL OR ws.duration_seconds IS NOT NULL OR ws.distance_meters IS NOT NULL)
+       )
+     ORDER BY w.completed_at DESC
+     LIMIT 1`,
     exerciseId,
     seriesId
   );
-  if (rows.length === 0) return [];
-  // All rows are ordered by completed_at DESC — take only sets from the most recent workout
-  const firstWorkoutExerciseId = rows[0].workout_exercise_id;
-  return rows
-    .filter((r) => r.workout_exercise_id === firstWorkoutExerciseId)
-    .map(mapRow);
+  if (!latest) return [];
+
+  const rows = await db.getAllAsync<WorkoutSetRow>(
+    `SELECT * FROM workout_sets WHERE workout_exercise_id = ? ORDER BY set_number ASC`,
+    latest.workout_exercise_id
+  );
+  return rows.map(mapRow);
 }
 
 /**
