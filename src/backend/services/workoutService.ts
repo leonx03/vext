@@ -11,6 +11,7 @@ import * as workoutSeriesModel from '@backend/models/workoutSeries';
 import * as exerciseSlotModel from '@backend/models/exerciseSlot';
 import * as exerciseOptionModel from '@backend/models/exerciseOption';
 import * as exerciseAlternativeModel from '@backend/models/exerciseAlternative';
+import * as exerciseOptionNoteModel from '@backend/models/exerciseOptionNote';
 import type { ExerciseAlternative } from '@backend/models/exerciseAlternative';
 import { getDefaultRestSeconds } from '@backend/services/timerService';
 import { APP_CONFIG } from '@config/app';
@@ -645,4 +646,23 @@ export async function switchWorkoutExercise(
     await workoutExercise.updateRestSeconds(db, workoutExerciseId, option.restSeconds);
     await workoutExercise.updateTargetReps(db, workoutExerciseId, option.targetRepsMin, option.targetRepsMax);
   }
+}
+
+/**
+ * Sets the note for an exercise, scoped to its currently-selected alternative.
+ * Notes live on the exercise option, so they're shared across every workout in the
+ * series and stay unique per alternative. An empty string clears the note. The
+ * option is resolved from the workout exercise so callers only need its id.
+ */
+export async function setWorkoutExerciseNote(
+  db: SQLite.SQLiteDatabase,
+  workoutExerciseId: string,
+  notes: string
+): Promise<void> {
+  const ex = await workoutExercise.getById(db, workoutExerciseId);
+  if (!ex) throw new Error(`Workout exercise not found, id ${workoutExerciseId}`);
+  // No option means a standalone workout with no series — nowhere series-level to
+  // store the note. In practice every workout has a series, so this is defensive.
+  if (!ex.exerciseOptionId) return;
+  await exerciseOptionNoteModel.setNote(db, ex.exerciseOptionId, notes);
 }
