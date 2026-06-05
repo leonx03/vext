@@ -33,6 +33,7 @@ type ExerciseCardProps = {
   isStrength: boolean;
   seriesId?: string | null;
   previousSets?: WorkoutSet[];
+  onSaveNote?: (text: string) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onAddSet: () => void;
@@ -51,6 +52,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   isStrength,
   seriesId,
   previousSets,
+  onSaveNote,
   onMoveUp,
   onMoveDown,
   onAddSet,
@@ -71,10 +73,17 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteInput, setNoteInput] = useState(exercise.note ?? '');
 
   useEffect(() => {
     setLocalRestSeconds(exercise.restSeconds);
   }, [exercise.restSeconds]);
+
+  // Resync when the note changes underneath us (e.g. switching alternative)
+  useEffect(() => {
+    setNoteInput(exercise.note ?? '');
+  }, [exercise.note]);
 
   useEffect(() => {
     setRepGoalInput(formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax));
@@ -101,6 +110,13 @@ export const ExerciseCard = React.memo(function ExerciseCard({
     const { min, max } = parseRepRange(repGoalInput);
     onUpdateTargetReps(min, max);
     setEditingRepGoal(false);
+  };
+
+  const handleSaveNote = () => {
+    if ((noteInput.trim() || '') !== (exercise.note ?? '')) {
+      onSaveNote?.(noteInput);
+    }
+    setEditingNote(false);
   };
 
   return (
@@ -154,6 +170,18 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     </Text>
                   </Pressable>
 
+                  {onSaveNote && (
+                    <Pressable
+                      onPress={() => setEditingNote((e) => !e)}
+                      className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+                    >
+                      <Ionicons name="document-text-outline" size={14} color="rgb(163, 163, 163)" />
+                      <Text className="ml-1 text-xs text-foreground-muted">
+                        {exercise.note ? 'Note' : 'Add note'}
+                      </Text>
+                    </Pressable>
+                  )}
+
                   {onMakeSuperset && (
                     <Pressable
                       onPress={onMakeSuperset}
@@ -164,6 +192,27 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     </Pressable>
                   )}
                 </View>
+
+                {/* Note editor / display */}
+                {editingNote ? (
+                  <View className="mb-2">
+                    <TextInput
+                      className="rounded-lg bg-background-100 px-3 py-2 text-sm text-foreground"
+                      placeholder="Add a note for this exercise…"
+                      placeholderTextColor="rgb(115, 115, 115)"
+                      multiline
+                      autoFocus
+                      value={noteInput}
+                      onChangeText={setNoteInput}
+                      onBlur={handleSaveNote}
+                    />
+                  </View>
+                ) : exercise.note ? (
+                  <Pressable onPress={() => setEditingNote(true)} className="mb-2 flex-row items-start gap-1.5">
+                    <Ionicons name="document-text-outline" size={13} color="rgb(115, 115, 115)" style={{ marginTop: 2 }} />
+                    <Text className="flex-1 text-xs italic text-foreground-muted">{exercise.note}</Text>
+                  </Pressable>
+                ) : null}
 
                 {/* Rest time editor */}
                 {editingRest && (

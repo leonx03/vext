@@ -397,6 +397,48 @@ const migrations: Migration[] = [
       CREATE INDEX idx_scheduled_workouts_series ON scheduled_workouts(series_id);
     `);
   },
+  // v15 → v16: Per-workout-exercise notes, scoped per alternative (exercise_option).
+  // Keyed by (workout_exercise_id, exercise_option_id) so switching the active
+  // alternative on a slot swaps which note is shown without losing the others.
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE workout_exercise_notes (
+        id TEXT PRIMARY KEY NOT NULL,
+        workout_exercise_id TEXT NOT NULL REFERENCES workout_exercises(id) ON DELETE CASCADE,
+        exercise_option_id TEXT,
+        notes TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE UNIQUE INDEX idx_wen_we_option ON workout_exercise_notes(workout_exercise_id, exercise_option_id);
+      CREATE INDEX idx_wen_we ON workout_exercise_notes(workout_exercise_id);
+    `);
+  },
+  // v16 → v17: Move exercise notes from per-workout to per-series. Notes now key on
+  // exercise_option (slot + exercise within a series), so they're shared across every
+  // workout in the series and stay unique per alternative. Migrates any existing notes.
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE exercise_option_notes (
+        exercise_option_id TEXT PRIMARY KEY NOT NULL REFERENCES exercise_options(id) ON DELETE CASCADE,
+        notes TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    // Carry over the most recently-updated note per option from the old per-workout table.
+    await db.execAsync(`
+      INSERT OR IGNORE INTO exercise_option_notes (exercise_option_id, notes, created_at, updated_at)
+      SELECT wen.exercise_option_id, wen.notes, wen.created_at, wen.updated_at
+      FROM workout_exercise_notes wen
+      WHERE wen.exercise_option_id IS NOT NULL
+        AND wen.updated_at = (
+          SELECT MAX(w2.updated_at) FROM workout_exercise_notes w2
+          WHERE w2.exercise_option_id = wen.exercise_option_id
+        );
+    `);
+    await db.execAsync(`DROP TABLE workout_exercise_notes;`);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

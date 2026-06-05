@@ -405,3 +405,15 @@ export function useSwitchWorkoutExercise(workoutId: string) {
     },
   });
 }
+
+export function useSetWorkoutExerciseNote(workoutId: string) {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workoutExerciseId, notes }: { workoutExerciseId: string; notes: string }) =>
+      workoutService.setWorkoutExerciseNote(db, workoutExerciseId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout', workoutId] });
+    },
+  });
+}

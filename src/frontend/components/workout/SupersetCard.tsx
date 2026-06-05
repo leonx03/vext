@@ -41,6 +41,7 @@ type SupersetCardProps = {
   onStartRest: () => void;
   seriesId?: string | null;
   onSwitchToAlternative?: (workoutExerciseId: string, newExerciseId: string) => void;
+  onSaveNote?: (workoutExerciseId: string, text: string) => void;
 };
 
 export const SupersetCard = React.memo(function SupersetCard({
@@ -62,11 +63,16 @@ export const SupersetCard = React.memo(function SupersetCard({
   onStartRest,
   seriesId,
   onSwitchToAlternative,
+  onSaveNote,
 }: SupersetCardProps) {
   const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
   const [localRestSeconds, setLocalRestSeconds] = useState(group.restSeconds);
   const [showRepGoalDialog, setShowRepGoalDialog] = useState(false);
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [noteInputs, setNoteInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(exercises.map((ex) => [ex.id, ex.note ?? '']))
+  );
   const [repGoalInputs, setRepGoalInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(exercises.map((ex) => [ex.id, formatRepRange(ex.targetRepsMin, ex.targetRepsMax)]))
   );
@@ -85,6 +91,10 @@ export const SupersetCard = React.memo(function SupersetCard({
     setRepGoalInputs(
       Object.fromEntries(exercises.map((ex) => [ex.id, formatRepRange(ex.targetRepsMin, ex.targetRepsMax)]))
     );
+  }, [exercises]);
+
+  useEffect(() => {
+    setNoteInputs(Object.fromEntries(exercises.map((ex) => [ex.id, ex.note ?? ''])));
   }, [exercises]);
 
   // Auto-collapse once when all rounds are fully filled in
@@ -113,6 +123,14 @@ export const SupersetCard = React.memo(function SupersetCard({
       onUpdateTargetReps(ex.id, min, max);
     });
     setShowRepGoalDialog(false);
+  };
+
+  const handleSaveNotes = () => {
+    exercises.forEach((ex) => {
+      const next = noteInputs[ex.id] ?? '';
+      if (next.trim() !== (ex.note ?? '')) onSaveNote?.(ex.id, next);
+    });
+    setShowNotesDialog(false);
   };
 
   return (
@@ -161,6 +179,17 @@ export const SupersetCard = React.memo(function SupersetCard({
             <Text className="ml-1 text-xs text-foreground-muted">Swap</Text>
           </Pressable>
         )}
+        {onSaveNote && (
+          <Pressable
+            onPress={() => setShowNotesDialog(true)}
+            className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+          >
+            <Ionicons name="document-text-outline" size={14} color="rgb(163, 163, 163)" />
+            <Text className="ml-1 text-xs text-foreground-muted">
+              {exercises.some((ex) => ex.note) ? 'Notes' : 'Add notes'}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {!isCollapsed && editingRest && (
@@ -206,6 +235,9 @@ export const SupersetCard = React.memo(function SupersetCard({
                     </Text>
                   ) : null}
                 </Text>
+                {ex.note ? (
+                  <Text className="text-xs italic text-foreground-subtle mb-0.5">{ex.note}</Text>
+                ) : null}
 
                 {set ? (
                   <SetRow
@@ -365,6 +397,53 @@ export const SupersetCard = React.memo(function SupersetCard({
               </Pressable>
               <Pressable
                 onPress={handleSaveRepGoals}
+                className="rounded-lg bg-primary px-4 py-2.5"
+              >
+                <Text className="text-sm font-semibold text-background">Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Notes dialog */}
+      <Modal
+        visible={showNotesDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNotesDialog(false)}
+      >
+        <Pressable
+          className="flex-1 items-center justify-center bg-black/60"
+          onPress={() => setShowNotesDialog(false)}
+        >
+          <Pressable
+            className="mx-8 w-full max-w-sm rounded-2xl bg-background-50 p-6"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-foreground mb-4">Notes</Text>
+            {exercises.map((ex) => (
+              <View key={ex.id} className="mb-3">
+                <Text className="text-xs font-medium text-foreground-muted mb-1">{ex.exerciseName}</Text>
+                <TextInput
+                  className="rounded-lg bg-background-100 px-3 py-2 text-sm text-foreground"
+                  placeholder="Add a note…"
+                  placeholderTextColor="rgb(115, 115, 115)"
+                  multiline
+                  value={noteInputs[ex.id] ?? ''}
+                  onChangeText={(v) => setNoteInputs((prev) => ({ ...prev, [ex.id]: v }))}
+                />
+              </View>
+            ))}
+            <View className="mt-2 flex-row justify-end gap-3">
+              <Pressable
+                onPress={() => setShowNotesDialog(false)}
+                className="rounded-lg border border-background-100 px-4 py-2.5"
+              >
+                <Text className="text-sm font-medium text-foreground-muted">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveNotes}
                 className="rounded-lg bg-primary px-4 py-2.5"
               >
                 <Text className="text-sm font-semibold text-background">Save</Text>

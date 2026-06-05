@@ -105,6 +105,8 @@ export interface WorkoutFull extends Workout {
 export interface WorkoutExerciseFull extends WorkoutExercise {
   exerciseName: string;
   exerciseCategory: string;
+  /** Per-workout note for the currently-selected alternative (exercise option). */
+  note: string | null;
   sets: WorkoutSet[];
 }
 

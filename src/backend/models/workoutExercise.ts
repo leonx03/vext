@@ -25,6 +25,7 @@ interface WorkoutExerciseRow {
 interface WorkoutExerciseFullRow extends WorkoutExerciseRow {
   exercise_name: string;
   exercise_category: string;
+  note_text: string | null;
 }
 
 function mapRow(row: WorkoutExerciseRow): WorkoutExercise {
@@ -50,9 +51,16 @@ function mapFullRow(row: WorkoutExerciseFullRow): WorkoutExerciseFull {
     ...mapRow(row),
     exerciseName: row.exercise_name,
     exerciseCategory: row.exercise_category,
+    note: row.note_text ?? null,
     sets: [],
   };
 }
+
+// Joins the note for the currently-selected exercise option. Notes live on the
+// option (series + slot + exercise), so they're shared across every workout in the
+// series and stay unique per alternative.
+const NOTE_JOIN = `LEFT JOIN exercise_option_notes eon
+       ON eon.exercise_option_id = we.exercise_option_id`;
 
 export async function addToWorkout(
   db: SQLite.SQLiteDatabase,
@@ -100,9 +108,11 @@ export async function getByWorkout(
     `SELECT
        we.*,
        e.name  AS exercise_name,
-       e.category AS exercise_category
+       e.category AS exercise_category,
+       eon.notes AS note_text
      FROM workout_exercises we
      JOIN exercises e ON e.id = we.exercise_id
+     ${NOTE_JOIN}
      WHERE we.workout_id = ?
      ORDER BY we.sort_order`,
     workoutId
@@ -219,9 +229,11 @@ export async function getBySuperset(
     `SELECT
        we.*,
        e.name AS exercise_name,
-       e.category AS exercise_category
+       e.category AS exercise_category,
+       eon.notes AS note_text
      FROM workout_exercises we
      JOIN exercises e ON e.id = we.exercise_id
+     ${NOTE_JOIN}
      WHERE we.superset_group_id = ?
      ORDER BY we.superset_position`,
     groupId
