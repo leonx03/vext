@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Switch, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
 import { useSettingsStore } from '@backend/store/settingsStore';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import { useBodyWeightHistory, useLogBodyWeight, useDeleteBodyWeight } from '@frontend/hooks/useBodyWeight';
@@ -10,6 +12,9 @@ import { SelectPicker } from '@frontend/components/overlay/SelectPicker';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import { formatWeight } from '@shared/utils/formatting';
 import type { UnitSystem } from '@shared/types/settings';
+
+const RELEASES_URL = 'https://github.com/leonx03/vext/releases';
+const APP_VERSION = Constants.expoConfig?.version ?? '?';
 
 const REST_OPTIONS = [
   { label: '30 seconds', value: '30' },
@@ -181,21 +186,15 @@ export default function ProfileScreen() {
           <Text className="text-sm font-medium text-foreground-muted mb-3">About</Text>
           <View className="flex-row items-center justify-between">
             <Text className="text-base text-foreground">Vext</Text>
-            <Text className="text-sm text-foreground-subtle">v1.0.0</Text>
+            <Text className="text-sm text-foreground-subtle">v{APP_VERSION}</Text>
           </View>
-        </View>
-
-        {/* Coming soon */}
-        <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4">
-          <Text className="text-sm font-medium text-foreground-muted mb-3">Coming Soon</Text>
-          {['Data Export', 'Custom Exercises', 'Theme Customization'].map((feature) => (
-            <View key={feature} className="flex-row items-center justify-between py-2">
-              <Text className="text-base text-foreground-subtle">{feature}</Text>
-              <View className="rounded-full bg-background-100 px-2 py-0.5">
-                <Text className="text-xs text-foreground-subtle">Soon</Text>
-              </View>
-            </View>
-          ))}
+          <Pressable
+            onPress={() => Linking.openURL(RELEASES_URL)}
+            className="mt-3 flex-row items-center justify-center gap-2 rounded-lg bg-background-100 py-3"
+          >
+            <Ionicons name="cloud-download-outline" size={18} color="rgb(52, 211, 153)" />
+            <Text className="text-sm font-semibold text-primary">Check for Updates</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
