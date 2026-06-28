@@ -163,11 +163,15 @@ export async function getByWorkout(
  * the last session where something was actually entered — leaving an exercise blank one
  * session falls back to the session before it rather than showing 0.
  * If seriesId is null/undefined (standalone workout), returns empty.
+ * When gymId is provided, the reference is scoped to that gym only (no cross-gym fallback):
+ * the "last time" weights stay explicit per gym, so an exercise never trained at a gym
+ * shows no reference there.
  */
 export async function getLatestSetsForExercise(
   db: SQLite.SQLiteDatabase,
   exerciseId: string,
-  seriesId?: string | null
+  seriesId?: string | null,
+  gymId?: string | null
 ): Promise<WorkoutSet[]> {
   // New standalone workouts (no series) should show no reference weights
   if (!seriesId) return [];
@@ -180,6 +184,7 @@ export async function getLatestSetsForExercise(
      WHERE we.exercise_id = ?
        AND w.status = 'completed'
        AND w.series_id = ?
+       ${gymId ? 'AND w.gym_id = ?' : ''}
        AND EXISTS (
          SELECT 1 FROM workout_sets ws
          WHERE ws.workout_exercise_id = we.id
@@ -187,8 +192,7 @@ export async function getLatestSetsForExercise(
        )
      ORDER BY w.completed_at DESC
      LIMIT 1`,
-    exerciseId,
-    seriesId
+    ...(gymId ? [exerciseId, seriesId, gymId] : [exerciseId, seriesId])
   );
   if (!latest) return [];
 
@@ -202,12 +206,14 @@ export async function getLatestSetsForExercise(
 /**
  * Batch version: returns previous sets for multiple exercises at once.
  * If seriesId is null/undefined, returns empty (standalone workout).
+ * When gymId is provided, the reference is scoped to that gym (see getLatestSetsForExercise).
  * Returns a Map keyed by exerciseId.
  */
 export async function getLatestSetsForExercises(
   db: SQLite.SQLiteDatabase,
   exerciseIds: string[],
-  seriesId?: string | null
+  seriesId?: string | null,
+  gymId?: string | null
 ): Promise<Map<string, WorkoutSet[]>> {
   const result = new Map<string, WorkoutSet[]>();
   if (exerciseIds.length === 0) return result;
@@ -215,7 +221,7 @@ export async function getLatestSetsForExercises(
   // Fetch in parallel
   await Promise.all(
     exerciseIds.map(async (eid) => {
-      const sets = await getLatestSetsForExercise(db, eid, seriesId);
+      const sets = await getLatestSetsForExercise(db, eid, seriesId, gymId);
       if (sets.length > 0) result.set(eid, sets);
     })
   );

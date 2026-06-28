@@ -65,7 +65,7 @@ function ActiveWorkoutContent({ workout, id }: { workout: WorkoutFull; id: strin
     () => workout.exercises.map((ex) => ex.exerciseId),
     [workout.exercises]
   );
-  const { data: previousSetsMap } = usePreviousSetsForExercises(exerciseIds, workout.seriesId);
+  const { data: previousSetsMap } = usePreviousSetsForExercises(exerciseIds, workout.seriesId, workout.gymId);
 
   const addExercise = useAddExercise(id);
   const logSet = useLogSet(id);

@@ -12,6 +12,7 @@ import * as exerciseSlotModel from '@backend/models/exerciseSlot';
 import * as exerciseOptionModel from '@backend/models/exerciseOption';
 import * as exerciseAlternativeModel from '@backend/models/exerciseAlternative';
 import * as exerciseOptionNoteModel from '@backend/models/exerciseOptionNote';
+import * as gymModel from '@backend/models/gym';
 import type { ExerciseAlternative } from '@backend/models/exerciseAlternative';
 import { getDefaultRestSeconds } from '@backend/services/timerService';
 import { APP_CONFIG } from '@config/app';
@@ -25,7 +26,8 @@ export async function startWorkout(
   db: SQLite.SQLiteDatabase,
   typeId: string,
   name?: string | null,
-  seriesId?: string | null
+  seriesId?: string | null,
+  gymId?: string | null
 ): Promise<Workout> {
   const active = await workout.getActive(db);
   if (active) {
@@ -41,7 +43,10 @@ export async function startWorkout(
     resolvedSeriesId = series.id;
   }
 
-  return workout.create(db, typeId, name, resolvedSeriesId);
+  // Fall back to the default gym when the caller didn't pick one (single-gym case).
+  const resolvedGymId = gymId ?? (await gymModel.getDefault(db))?.id ?? null;
+
+  return workout.create(db, typeId, name, resolvedSeriesId, resolvedGymId);
 }
 
 export async function addExerciseToWorkout(
@@ -353,6 +358,8 @@ export async function getWorkoutSummaries(
   type SummaryRow = {
     id: string;
     series_id: string | null;
+    gym_id: string | null;
+    gym_name: string | null;
     name: string | null;
     workout_type_name: string;
     status: string;
@@ -368,6 +375,8 @@ export async function getWorkoutSummaries(
     `SELECT
        w.id,
        w.series_id,
+       w.gym_id,
+       g.name             AS gym_name,
        COALESCE(ws_series.name, w.name) AS name,
        wt.name            AS workout_type_name,
        w.status,
@@ -380,6 +389,7 @@ export async function getWorkoutSummaries(
      FROM workouts w
      JOIN workout_types wt ON wt.id = w.workout_type_id
      LEFT JOIN workout_series ws_series ON ws_series.id = w.series_id
+     LEFT JOIN gyms g ON g.id = w.gym_id
      LEFT JOIN workout_exercises we ON we.workout_id = w.id
      LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id
      WHERE w.status = ?
@@ -416,6 +426,8 @@ export async function getWorkoutSummaries(
   return rows.map((row) => ({
     id: row.id,
     seriesId: row.series_id,
+    gymId: row.gym_id,
+    gymName: row.gym_name,
     name: row.name,
     workoutTypeName: row.workout_type_name,
     status: row.status as WorkoutStatus,
@@ -431,22 +443,37 @@ export async function getWorkoutSummaries(
 
 export async function repeatWorkout(
   db: SQLite.SQLiteDatabase,
-  sourceWorkoutId: string
+  sourceWorkoutId: string,
+  gymId?: string | null
 ): Promise<Workout> {
-  const source = await getFullWorkout(db, sourceWorkoutId);
-  if (!source) throw new Error('Source workout not found');
+  const requested = await getFullWorkout(db, sourceWorkoutId);
+  if (!requested) throw new Error('Source workout not found');
+
+  // Post-migration all workouts have a series_id; create one only as a safety fallback
+  let seriesId = requested.seriesId;
+  if (!seriesId) {
+    const series = await workoutSeriesModel.create(db, requested.name || requested.workoutType.name);
+    seriesId = series.id;
+    await db.runAsync(`UPDATE workouts SET series_id = ? WHERE id = ?`, seriesId, requested.id);
+  }
+
+  const resolvedGymId = gymId ?? (await gymModel.getDefault(db))?.id ?? null;
+
+  // Per-gym active alternatives: clone the structure from that gym's most recent session of
+  // this series, so each gym carries its own active exercise per slot. Fall back to the
+  // requested workout when this gym has no history in the series yet.
+  let source = requested;
+  if (resolvedGymId && seriesId) {
+    const gymLatest = await workout.getLatestCompletedInSeries(db, seriesId, resolvedGymId);
+    if (gymLatest && gymLatest.id !== requested.id) {
+      const gymLatestFull = await getFullWorkout(db, gymLatest.id);
+      if (gymLatestFull) source = gymLatestFull;
+    }
+  }
 
   const name = source.name || source.workoutType.name;
 
-  // Post-migration all workouts have a series_id; create one only as a safety fallback
-  let seriesId = source.seriesId;
-  if (!seriesId) {
-    const series = await workoutSeriesModel.create(db, source.name || source.workoutType.name);
-    seriesId = series.id;
-    await db.runAsync(`UPDATE workouts SET series_id = ? WHERE id = ?`, seriesId, source.id);
-  }
-
-  const newWorkout = await startWorkout(db, source.workoutTypeId, name, seriesId);
+  const newWorkout = await startWorkout(db, source.workoutTypeId, name, seriesId, resolvedGymId);
 
   // Map old superset group IDs to new ones for the repeated workout
   const groupIdMap = new Map<string, string>();
@@ -476,9 +503,10 @@ export async function repeatWorkout(
 export async function getPreviousSetsForExercises(
   db: SQLite.SQLiteDatabase,
   exerciseIds: string[],
-  seriesId?: string | null
+  seriesId?: string | null,
+  gymId?: string | null
 ): Promise<Map<string, WorkoutSet[]>> {
-  return workoutSet.getLatestSetsForExercises(db, exerciseIds, seriesId);
+  return workoutSet.getLatestSetsForExercises(db, exerciseIds, seriesId, gymId);
 }
 
 export async function getFullWorkoutsByIds(
@@ -531,6 +559,8 @@ export async function getWorkoutSummariesByDateRange(
   type DateRangeSummaryRow = {
     id: string;
     series_id: string | null;
+    gym_id: string | null;
+    gym_name: string | null;
     name: string | null;
     workout_type_name: string;
     status: string;
@@ -546,6 +576,8 @@ export async function getWorkoutSummariesByDateRange(
     `SELECT
        w.id,
        w.series_id,
+       w.gym_id,
+       g.name             AS gym_name,
        COALESCE(ws_series.name, w.name) AS name,
        wt.name            AS workout_type_name,
        w.status,
@@ -558,6 +590,7 @@ export async function getWorkoutSummariesByDateRange(
      FROM workouts w
      JOIN workout_types wt ON wt.id = w.workout_type_id
      LEFT JOIN workout_series ws_series ON ws_series.id = w.series_id
+     LEFT JOIN gyms g ON g.id = w.gym_id
      LEFT JOIN workout_exercises we ON we.workout_id = w.id
      LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id
      WHERE w.status = ? AND w.started_at >= ? AND w.started_at <= ?
@@ -592,6 +625,8 @@ export async function getWorkoutSummariesByDateRange(
   return rows.map((row) => ({
     id: row.id,
     seriesId: row.series_id,
+    gymId: row.gym_id,
+    gymName: row.gym_name,
     name: row.name,
     workoutTypeName: row.workout_type_name,
     status: row.status as WorkoutStatus,

@@ -31,6 +31,7 @@ export interface Workout {
   id: string;
   workoutTypeId: string;
   seriesId: string | null;
+  gymId: string | null;
   name: string | null;
   status: WorkoutStatus;
   startedAt: string;
@@ -114,6 +115,8 @@ export interface WorkoutExerciseFull extends WorkoutExercise {
 export interface WorkoutSummary {
   id: string;
   seriesId: string | null;
+  gymId: string | null;
+  gymName: string | null;
   name: string | null;
   workoutTypeName: string;
   status: WorkoutStatus;

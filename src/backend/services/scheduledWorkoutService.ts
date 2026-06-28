@@ -47,7 +47,8 @@ export async function cancelScheduled(
 export async function startScheduledWorkout(
   db: SQLite.SQLiteDatabase,
   scheduledId: string,
-  seriesId: string
+  seriesId: string,
+  gymId?: string | null
 ): Promise<Workout> {
   // Find the latest completed workout in this series to repeat
   const latest = await db.getFirstAsync<{ id: string }>(
@@ -57,7 +58,8 @@ export async function startScheduledWorkout(
   if (!latest) {
     throw new Error('No completed workout found in this series to repeat');
   }
-  const workout = await workoutService.repeatWorkout(db, latest.id);
+  // repeatWorkout re-resolves the clone source per gym (falling back to this latest one).
+  const workout = await workoutService.repeatWorkout(db, latest.id, gymId);
   await scheduledWorkoutModel.markStarted(db, scheduledId, workout.id);
   return workout;
 }
