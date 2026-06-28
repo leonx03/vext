@@ -7,6 +7,7 @@ interface WorkoutRow {
   id: string;
   workout_type_id: string;
   series_id: string | null;
+  gym_id: string | null;
   name: string | null;
   status: string;
   started_at: string;
@@ -22,6 +23,7 @@ function mapRow(row: WorkoutRow): Workout {
     id: row.id,
     workoutTypeId: row.workout_type_id,
     seriesId: row.series_id,
+    gymId: row.gym_id,
     name: row.name,
     status: row.status as WorkoutStatus,
     startedAt: row.started_at,
@@ -38,21 +40,52 @@ export async function create(
   db: SQLite.SQLiteDatabase,
   workoutTypeId: string,
   name?: string | null,
-  seriesId?: string | null
+  seriesId?: string | null,
+  gymId?: string | null
 ): Promise<Workout> {
   const id = Crypto.randomUUID();
   await db.runAsync(
-    `INSERT INTO workouts (id, workout_type_id, name, status, started_at, last_started_at, created_at, series_id)
-     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'), ?)`,
+    `INSERT INTO workouts (id, workout_type_id, name, status, started_at, last_started_at, created_at, series_id, gym_id)
+     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'), ?, ?)`,
     id,
     workoutTypeId,
     name ?? null,
     WorkoutStatus.InProgress,
-    seriesId ?? null
+    seriesId ?? null,
+    gymId ?? null
   );
   const workout = await getById(db, id);
   if (!workout) throw new Error(`Failed to create workout with id ${id}`);
   return workout;
+}
+
+/**
+ * Most recent completed workout in a series, optionally scoped to a gym. Drives per-gym
+ * structure resolution: when starting at a gym, clone that gym's last session if it exists.
+ * Returns null when the (series[, gym]) combination has no completed workouts yet.
+ */
+export async function getLatestCompletedInSeries(
+  db: SQLite.SQLiteDatabase,
+  seriesId: string,
+  gymId?: string | null
+): Promise<Workout | null> {
+  const row = gymId
+    ? await db.getFirstAsync<WorkoutRow>(
+        `SELECT * FROM workouts
+         WHERE series_id = ? AND gym_id = ? AND status = ?
+         ORDER BY completed_at DESC LIMIT 1`,
+        seriesId,
+        gymId,
+        WorkoutStatus.Completed
+      )
+    : await db.getFirstAsync<WorkoutRow>(
+        `SELECT * FROM workouts
+         WHERE series_id = ? AND status = ?
+         ORDER BY completed_at DESC LIMIT 1`,
+        seriesId,
+        WorkoutStatus.Completed
+      );
+  return row ? mapRow(row) : null;
 }
 
 export async function getActive(

@@ -439,6 +439,34 @@ const migrations: Migration[] = [
     `);
     await db.execAsync(`DROP TABLE workout_exercise_notes;`);
   },
+  // v17 → v18: Multiple gyms. Add a gyms table and tag each workout with the gym it was
+  // done at. Creates a single default gym and attributes all existing history to it, so
+  // gym becomes a second scoping dimension alongside series_id (per-gym last weights and
+  // per-gym active alternatives are layered on top in later work).
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE gyms (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        archived_at TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(name COLLATE NOCASE)
+      );
+
+      ALTER TABLE workouts ADD COLUMN gym_id TEXT REFERENCES gyms(id);
+      CREATE INDEX idx_workouts_series_gym ON workouts(series_id, gym_id);
+    `);
+
+    // Seed the default gym and attribute all existing workouts to it.
+    const defaultGymId = Crypto.randomUUID();
+    await db.runAsync(
+      `INSERT INTO gyms (id, name, is_default, sort_order) VALUES (?, 'My Gym', 1, 0)`,
+      defaultGymId
+    );
+    await db.runAsync(`UPDATE workouts SET gym_id = ? WHERE gym_id IS NULL`, defaultGymId);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

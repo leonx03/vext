@@ -31,6 +31,7 @@ export interface Workout {
   id: string;
   workoutTypeId: string;
   seriesId: string | null;
+  gymId: string | null;
   name: string | null;
   status: WorkoutStatus;
   startedAt: string;
