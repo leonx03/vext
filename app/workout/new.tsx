@@ -8,6 +8,7 @@ import * as workoutTypeModel from '@backend/models/workoutType';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import { useStartWorkout } from '@frontend/hooks/useWorkout';
 import { useTodayScheduledWorkouts, useStartScheduledWorkout } from '@frontend/hooks/useScheduledWorkouts';
+import { useGymGate } from '@frontend/hooks/useGymGate';
 import type { WorkoutType } from '@shared/types/workout';
 import type { ScheduledWorkout } from '@shared/types/scheduledWorkout';
 
@@ -28,6 +29,7 @@ export default function NewWorkoutScreen() {
   const startWorkout = useStartWorkout();
   const { data: todayPlanned } = useTodayScheduledWorkouts();
   const startScheduled = useStartScheduledWorkout();
+  const { gate, gymGate } = useGymGate();
 
   const unstartedPlanned = todayPlanned?.filter((s) => !s.startedWorkoutId) ?? [];
 
@@ -36,27 +38,32 @@ export default function NewWorkoutScreen() {
     queryFn: () => workoutTypeModel.getAll(db),
   });
 
-  const handleStart = async () => {
+  const handleStart = () => {
     if (!selectedType) return;
-    try {
-      const workout = await startWorkout.mutateAsync({
-        typeId: selectedType.id,
-        name: workoutName.trim() || undefined,
-      });
-      router.replace(`/workout/${workout.id}`);
-    } catch (e) {
-      // mutation errors shown inline via startWorkout.error
-      if (__DEV__) console.warn('Start workout failed:', e);
-    }
+    gate(async (gymId) => {
+      try {
+        const workout = await startWorkout.mutateAsync({
+          typeId: selectedType.id,
+          name: workoutName.trim() || undefined,
+          gymId,
+        });
+        router.replace(`/workout/${workout.id}`);
+      } catch (e) {
+        // mutation errors shown inline via startWorkout.error
+        if (__DEV__) console.warn('Start workout failed:', e);
+      }
+    });
   };
 
-  const handleStartPlanned = async (s: ScheduledWorkout) => {
-    try {
-      const workout = await startScheduled.mutateAsync({ scheduledId: s.id, seriesId: s.seriesId });
-      router.replace(`/workout/${workout.id}`);
-    } catch (e) {
-      if (__DEV__) console.warn('Start planned workout failed:', e);
-    }
+  const handleStartPlanned = (s: ScheduledWorkout) => {
+    gate(async (gymId) => {
+      try {
+        const workout = await startScheduled.mutateAsync({ scheduledId: s.id, seriesId: s.seriesId, gymId });
+        router.replace(`/workout/${workout.id}`);
+      } catch (e) {
+        if (__DEV__) console.warn('Start planned workout failed:', e);
+      }
+    });
   };
 
   const handlePlannedPress = () => {
@@ -158,6 +165,7 @@ export default function NewWorkoutScreen() {
             <Text className="mt-3 text-sm text-foreground-muted">Starting workout...</Text>
           </View>
         )}
+        {gymGate}
       </View>
     );
   }
@@ -210,6 +218,7 @@ export default function NewWorkoutScreen() {
             </Pressable>
           )}
         />
+        {gymGate}
       </View>
     );
   }
@@ -289,6 +298,7 @@ export default function NewWorkoutScreen() {
           </Text>
         </Pressable>
       </View>
+      {gymGate}
     </View>
   );
 }

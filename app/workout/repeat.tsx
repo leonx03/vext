@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '@frontend/components/EmptyState';
 import { useWorkoutHistory } from '@frontend/hooks/useHistory';
 import { useRepeatWorkout } from '@frontend/hooks/useWorkout';
+import { useGymGate } from '@frontend/hooks/useGymGate';
 import { cn } from '@frontend/lib/utils';
 import type { WorkoutSummary } from '@shared/types/workout';
 
@@ -47,17 +48,20 @@ export default function RepeatWorkoutScreen() {
   const router = useRouter();
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useWorkoutHistory();
   const repeatWorkout = useRepeatWorkout();
+  const { gate, gymGate } = useGymGate();
 
   const workouts = useMemo(() => data?.pages.flatMap((page) => page) ?? [], [data]);
   const groups = useMemo(() => groupWorkouts(workouts), [workouts]);
 
-  const handleRepeat = async (workoutId: string) => {
-    try {
-      const newWorkout = await repeatWorkout.mutateAsync(workoutId);
-      router.replace(`/workout/${newWorkout.id}`);
-    } catch (e) {
-      if (__DEV__) console.warn('Repeat workout failed:', e);
-    }
+  const handleRepeat = (workoutId: string) => {
+    gate(async (gymId) => {
+      try {
+        const newWorkout = await repeatWorkout.mutateAsync({ sourceWorkoutId: workoutId, gymId });
+        router.replace(`/workout/${newWorkout.id}`);
+      } catch (e) {
+        if (__DEV__) console.warn('Repeat workout failed:', e);
+      }
+    });
   };
 
   return (
@@ -132,6 +136,7 @@ export default function RepeatWorkoutScreen() {
           </Pressable>
         )}
       />
+      {gymGate}
     </View>
   );
 }

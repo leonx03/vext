@@ -7,6 +7,8 @@ import { EmptyState } from '@frontend/components/EmptyState';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import { useWorkoutHistory, useWorkoutGroupDetails } from '@frontend/hooks/useHistory';
 import { useRepeatWorkout, useDeleteWorkout, useDeleteWorkouts, useContinueWorkout, useForceContinueWorkout, useUpdateWorkoutName, useMoveSeriesUp, useMoveSeriesDown } from '@frontend/hooks/useWorkout';
+import { useGymGate } from '@frontend/hooks/useGymGate';
+import { useAllGyms } from '@frontend/hooks/useGyms';
 import { useRouter } from 'expo-router';
 import { formatDate, formatDuration, parseUTCTimestamp } from '@shared/utils/formatting';
 import { cn } from '@frontend/lib/utils';
@@ -74,6 +76,16 @@ export default function WorkoutsScreen() {
   const forceContinueWorkout = useForceContinueWorkout();
   const moveSeriesUp = useMoveSeriesUp();
   const moveSeriesDown = useMoveSeriesDown();
+  const { gate, gymGate } = useGymGate();
+
+  const { data: allGyms } = useAllGyms();
+  const gymNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of allGyms ?? []) map.set(g.id, g.name);
+    return map;
+  }, [allGyms]);
+  // Only surface the gym label once more than one gym has ever existed.
+  const showGymLabels = (allGyms?.length ?? 0) > 1;
 
   const [selectedGroup, setSelectedGroup] = useState<WorkoutGroup | null>(null);
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<WorkoutGroup | null>(null);
@@ -116,14 +128,16 @@ export default function WorkoutsScreen() {
     setExpandedSessions(new Set());
   }, [selectedGroup]);
 
-  const handleRepeat = async (workoutId: string) => {
-    try {
-      const newWorkout = await repeatWorkout.mutateAsync(workoutId);
-      router.replace(`/workout/${newWorkout.id}`);
-    } catch (e) {
-      // mutation errors shown inline via repeatWorkout.error
-      if (__DEV__) console.warn('Repeat workout failed:', e);
-    }
+  const handleRepeat = (workoutId: string) => {
+    gate(async (gymId) => {
+      try {
+        const newWorkout = await repeatWorkout.mutateAsync({ sourceWorkoutId: workoutId, gymId });
+        router.replace(`/workout/${newWorkout.id}`);
+      } catch (e) {
+        // mutation errors shown inline via repeatWorkout.error
+        if (__DEV__) console.warn('Repeat workout failed:', e);
+      }
+    });
   };
 
   const handleDeleteGroup = async (group: WorkoutGroup) => {
@@ -336,7 +350,15 @@ export default function WorkoutsScreen() {
                           <Text className="text-sm font-semibold text-foreground">
                             {formatDate(session.startedAt)}
                           </Text>
-                          <Text className="text-xs text-foreground-muted mt-0.5">{formatDuration(duration)}</Text>
+                          <View className="flex-row items-center gap-2 mt-0.5">
+                            <Text className="text-xs text-foreground-muted">{formatDuration(duration)}</Text>
+                            {showGymLabels && session.gymId && gymNames.has(session.gymId) && (
+                              <View className="flex-row items-center gap-1">
+                                <Ionicons name="location-outline" size={11} color="rgb(115, 115, 115)" />
+                                <Text className="text-xs text-foreground-subtle">{gymNames.get(session.gymId)}</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                         <View className="flex-row items-center gap-2">
                           <Pressable
@@ -481,6 +503,8 @@ export default function WorkoutsScreen() {
         onConfirm={handleForceContinue}
         onCancel={() => setConfirmContinueId(null)}
       />
+
+      {gymGate}
     </View>
   );
 }

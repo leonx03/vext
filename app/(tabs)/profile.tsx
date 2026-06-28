@@ -8,6 +8,7 @@ import { useSettingsStore } from '@backend/store/settingsStore';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import { useBodyWeightHistory, useLogBodyWeight, useDeleteBodyWeight } from '@frontend/hooks/useBodyWeight';
 import { WeightSparkline } from '@frontend/components/profile/WeightSparkline';
+import { GymManager } from '@frontend/components/profile/GymManager';
 import { SelectPicker } from '@frontend/components/overlay/SelectPicker';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import { formatWeight } from '@shared/utils/formatting';
@@ -162,6 +163,9 @@ export default function ProfileScreen() {
             Currently using {units === 'metric' ? 'metric (kg, km)' : 'imperial (lb, mi)'}
           </Text>
         </View>
+
+        {/* Gyms */}
+        <GymManager />
 
         {/* Rest timer default */}
         <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4">

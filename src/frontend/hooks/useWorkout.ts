@@ -29,8 +29,8 @@ export function useStartWorkout() {
   const db = useDatabase();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ typeId, name }: { typeId: string; name?: string }) =>
-      workoutService.startWorkout(db, typeId, name),
+    mutationFn: ({ typeId, name, gymId }: { typeId: string; name?: string; gymId?: string }) =>
+      workoutService.startWorkout(db, typeId, name, null, gymId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeWorkout'] });
     },
@@ -163,8 +163,8 @@ export function useRepeatWorkout() {
   const db = useDatabase();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (sourceWorkoutId: string) =>
-      workoutService.repeatWorkout(db, sourceWorkoutId),
+    mutationFn: ({ sourceWorkoutId, gymId }: { sourceWorkoutId: string; gymId?: string }) =>
+      workoutService.repeatWorkout(db, sourceWorkoutId, gymId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeWorkout'] });
     },

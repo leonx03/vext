@@ -75,8 +75,8 @@ export function useStartScheduledWorkout() {
   const db = useDatabase();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ scheduledId, seriesId }: { scheduledId: string; seriesId: string }) =>
-      scheduledWorkoutService.startScheduledWorkout(db, scheduledId, seriesId),
+    mutationFn: ({ scheduledId, seriesId, gymId }: { scheduledId: string; seriesId: string; gymId?: string }) =>
+      scheduledWorkoutService.startScheduledWorkout(db, scheduledId, seriesId, gymId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
       queryClient.invalidateQueries({ queryKey: ['activeWorkout'] });
