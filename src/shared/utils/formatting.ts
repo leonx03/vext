@@ -66,6 +66,13 @@ export function formatTimerDisplay(seconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+/** Format a plain YYYY-MM-DD date (no time/UTC) for display, e.g. "Mon, Jun 29 2026". */
+export function formatPlainDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  return format(new Date(y, m - 1, d), 'EEE, MMM d yyyy');
+}
+
 /** Short rest display, e.g. 45 -> "45s", 120 -> "2 min", 240 -> "4 min". */
 export function formatRestShort(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;

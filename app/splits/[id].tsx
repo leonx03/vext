@@ -17,7 +17,8 @@ import {
   useClearAppliedSplit,
 } from '@frontend/hooks/useSplits';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
-import { formatRestShort, formatPrescription } from '@shared/utils/formatting';
+import { DatePicker } from '@frontend/components/DatePicker';
+import { formatRestShort, formatPrescription, formatPlainDate } from '@shared/utils/formatting';
 import { cn } from '@frontend/lib/utils';
 import type { SplitDayFull } from '@shared/types/split';
 
@@ -79,6 +80,7 @@ export default function SplitDetailScreen() {
   const [seriesPicker, setSeriesPicker] = useState<{ mode: 'add' } | { mode: 'edit'; dayId: string } | null>(null);
   const [showApply, setShowApply] = useState(false);
   const [startDate, setStartDate] = useState(todayKey());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [cycles, setCycles] = useState(4);
   const [applyResult, setApplyResult] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -320,13 +322,13 @@ export default function SplitDetailScreen() {
             <Text className="mt-1 text-xs text-foreground-muted">Schedules each workout day onto the agenda. Rest days are skipped.</Text>
 
             <Text className="mt-4 text-xs font-medium text-foreground-subtle">START DATE</Text>
-            <TextInput
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgb(115, 115, 115)"
-              className="mt-1 rounded-lg border border-background-100 px-3 py-2.5 text-foreground"
-            />
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              className="mt-1 flex-row items-center justify-between rounded-lg border border-background-100 px-3 py-2.5"
+            >
+              <Text className="text-foreground">{formatPlainDate(startDate)}</Text>
+              <Ionicons name="calendar-outline" size={18} color="rgb(115, 115, 115)" />
+            </Pressable>
 
             <Text className="mt-4 text-xs font-medium text-foreground-subtle">CYCLES</Text>
             <View className="mt-1 flex-row items-center gap-4">
@@ -378,6 +380,13 @@ export default function SplitDetailScreen() {
         destructive
         onConfirm={handleClear}
         onCancel={() => setConfirmClear(false)}
+      />
+
+      <DatePicker
+        visible={showDatePicker}
+        value={startDate}
+        onSelect={(date) => { setStartDate(date); setShowDatePicker(false); }}
+        onClose={() => setShowDatePicker(false)}
       />
     </View>
   );
