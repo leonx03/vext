@@ -500,6 +500,55 @@ export async function repeatWorkout(
   return newWorkout;
 }
 
+/**
+ * Instantiate a brand-new workout from a series' template — its slots' primary options —
+ * without needing a prior completed session. Used when starting a scheduled/seeded series
+ * that has no history yet (e.g. the default split). Each slot's primary exercise is added
+ * with its prescribed rest/target reps, and target_sets (default 3) empty sets are
+ * pre-created so the prescription is visible immediately.
+ */
+export async function startWorkoutFromSeriesTemplate(
+  db: SQLite.SQLiteDatabase,
+  seriesId: string,
+  gymId?: string | null
+): Promise<Workout> {
+  const series = await workoutSeriesModel.getById(db, seriesId);
+  if (!series) throw new Error(`Series not found: ${seriesId}`);
+
+  // Templates only carry exercise structure, not a workout type. Default to Strength
+  // Training (the type these series are built for), falling back to any available type.
+  const defaults = await workoutType.getDefaults(db);
+  const strength = defaults.find((t) => t.name === 'Strength Training');
+  const type = strength ?? defaults[0] ?? (await workoutType.getAll(db))[0];
+  if (!type) throw new Error('No workout type available to instantiate the template');
+
+  const newWorkout = await startWorkout(db, type.id, series.name, seriesId, gymId);
+
+  const slots = await exerciseSlotModel.getBySeries(db, seriesId);
+  for (const slot of slots) {
+    const options = await exerciseOptionModel.getBySlot(db, slot.id); // is_primary DESC
+    const primary = options.find((o) => o.isPrimary) ?? options[0];
+    if (!primary) continue;
+
+    const newExercise = await addExerciseToWorkout(
+      db,
+      newWorkout.id,
+      primary.exerciseId,
+      primary.restSeconds,
+      primary.targetRepsMin,
+      primary.targetRepsMax,
+      slot.id
+    );
+
+    const setCount = primary.targetSets ?? 3;
+    for (let i = 0; i < setCount; i++) {
+      await workoutSet.add(db, newExercise.id);
+    }
+  }
+
+  return newWorkout;
+}
+
 export async function getPreviousSetsForExercises(
   db: SQLite.SQLiteDatabase,
   exerciseIds: string[],

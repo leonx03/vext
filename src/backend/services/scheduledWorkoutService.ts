@@ -50,16 +50,15 @@ export async function startScheduledWorkout(
   seriesId: string,
   gymId?: string | null
 ): Promise<Workout> {
-  // Find the latest completed workout in this series to repeat
+  // Prefer cloning the latest completed session (carries per-gym weight progression).
   const latest = await db.getFirstAsync<{ id: string }>(
     `SELECT id FROM workouts WHERE series_id = ? AND status = 'completed' ORDER BY started_at DESC LIMIT 1`,
     seriesId
   );
-  if (!latest) {
-    throw new Error('No completed workout found in this series to repeat');
-  }
-  // repeatWorkout re-resolves the clone source per gym (falling back to this latest one).
-  const workout = await workoutService.repeatWorkout(db, latest.id, gymId);
+  // No history yet (e.g. a seeded/templated series) — instantiate from the series template.
+  const workout = latest
+    ? await workoutService.repeatWorkout(db, latest.id, gymId)
+    : await workoutService.startWorkoutFromSeriesTemplate(db, seriesId, gymId);
   await scheduledWorkoutModel.markStarted(db, scheduledId, workout.id);
   return workout;
 }
