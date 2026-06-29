@@ -1,7 +1,7 @@
 /** ExerciseOption model - manages exercise options (primary + alternatives) within a slot. */
 import type * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
-import type { ExerciseOption } from '@shared/types/workout';
+import type { ExerciseOption, RepGoalType } from '@shared/types/workout';
 
 interface ExerciseOptionRow {
   id: string;
@@ -11,6 +11,8 @@ interface ExerciseOptionRow {
   rest_seconds: number;
   target_reps_min: number | null;
   target_reps_max: number | null;
+  target_sets: number | null;
+  rep_goal_type: string;
   created_at: string;
 }
 
@@ -23,6 +25,8 @@ function mapRow(row: ExerciseOptionRow): ExerciseOption {
     restSeconds: row.rest_seconds,
     targetRepsMin: row.target_reps_min,
     targetRepsMax: row.target_reps_max,
+    targetSets: row.target_sets,
+    repGoalType: (row.rep_goal_type as RepGoalType) ?? 'range',
     createdAt: row.created_at,
   };
 }
@@ -34,14 +38,16 @@ export async function create(
   isPrimary: boolean,
   restSeconds: number,
   targetRepsMin?: number | null,
-  targetRepsMax?: number | null
+  targetRepsMax?: number | null,
+  targetSets?: number | null,
+  repGoalType: RepGoalType = 'range'
 ): Promise<ExerciseOption> {
   const id = Crypto.randomUUID();
   await db.runAsync(
-    `INSERT INTO exercise_options (id, slot_id, exercise_id, is_primary, rest_seconds, target_reps_min, target_reps_max)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO exercise_options (id, slot_id, exercise_id, is_primary, rest_seconds, target_reps_min, target_reps_max, target_sets, rep_goal_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id, slotId, exerciseId, isPrimary ? 1 : 0, restSeconds,
-    targetRepsMin ?? null, targetRepsMax ?? null
+    targetRepsMin ?? null, targetRepsMax ?? null, targetSets ?? null, repGoalType
   );
   const row = await db.getFirstAsync<ExerciseOptionRow>(
     `SELECT * FROM exercise_options WHERE id = ?`, id
@@ -115,5 +121,25 @@ export async function updateTargetReps(
   await db.runAsync(
     `UPDATE exercise_options SET target_reps_min = ?, target_reps_max = ? WHERE id = ?`,
     targetRepsMin, targetRepsMax, id
+  );
+}
+
+export async function updateTargetSets(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  targetSets: number | null
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE exercise_options SET target_sets = ? WHERE id = ?`, targetSets, id
+  );
+}
+
+export async function updateRepGoalType(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  repGoalType: RepGoalType
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE exercise_options SET rep_goal_type = ? WHERE id = ?`, repGoalType, id
   );
 }

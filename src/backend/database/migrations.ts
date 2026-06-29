@@ -467,6 +467,44 @@ const migrations: Migration[] = [
     );
     await db.runAsync(`UPDATE workouts SET gym_id = ? WHERE gym_id IS NULL`, defaultGymId);
   },
+  // v18 → v19: Workout split planning. A split is an ordered sequence of days (each a
+  // workout linked to a series, or a rest day) that can be applied from a start date for
+  // N cycles to populate the agenda. exercise_options gains target_sets so a series can act
+  // as a first-class template (prescribed set count, used when instantiating a workout with
+  // no prior history). scheduled_workouts gains split_id + application_id so applied cycles
+  // can be cleared. No data seeding here — the default split is seeded in seed.ts after the
+  // exercise catalog exists (migrations run before seeding on a fresh install).
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE splits (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        archived_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE split_days (
+        id TEXT PRIMARY KEY NOT NULL,
+        split_id TEXT NOT NULL REFERENCES splits(id) ON DELETE CASCADE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        day_type TEXT NOT NULL DEFAULT 'workout',
+        series_id TEXT REFERENCES workout_series(id) ON DELETE SET NULL,
+        label TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_split_days_split ON split_days(split_id);
+
+      ALTER TABLE exercise_options ADD COLUMN target_sets INTEGER;
+      ALTER TABLE exercise_options ADD COLUMN rep_goal_type TEXT NOT NULL DEFAULT 'range';
+
+      ALTER TABLE scheduled_workouts ADD COLUMN split_id TEXT REFERENCES splits(id) ON DELETE SET NULL;
+      ALTER TABLE scheduled_workouts ADD COLUMN application_id TEXT;
+      CREATE INDEX idx_scheduled_workouts_split ON scheduled_workouts(split_id);
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

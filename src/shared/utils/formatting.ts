@@ -66,6 +66,33 @@ export function formatTimerDisplay(seconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+/** Short rest display, e.g. 45 -> "45s", 120 -> "2 min", 240 -> "4 min". */
+export function formatRestShort(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.round(seconds / 60)} min`;
+}
+
+/**
+ * Set/rep prescription. AMRAP is an explicit goal type, not inferred from missing reps:
+ *   ('range', 3, 6, 8) -> "3 × 6-8"   ('range', 2, 5, null) -> "2 × 5+"
+ *   ('amrap', 3, …)     -> "3 × AMRAP"  ('range', 3, null, null) -> "3 sets" (no rep goal)
+ */
+export function formatPrescription(
+  sets: number | null,
+  repsMin: number | null,
+  repsMax: number | null,
+  repGoalType: 'range' | 'amrap' = 'range'
+): string {
+  const setPart = sets != null ? `${sets} × ` : '';
+  if (repGoalType === 'amrap') return `${setPart}AMRAP`;
+  if (repsMin == null && repsMax == null) return sets != null ? `${sets} sets` : '—';
+  let repPart: string;
+  if (repsMax == null) repPart = `${repsMin}+`;
+  else if (repsMin === repsMax) repPart = `${repsMin}`;
+  else repPart = `${repsMin}-${repsMax}`;
+  return `${setPart}${repPart}`;
+}
+
 export function formatCompactNumber(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';

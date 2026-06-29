@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { APP_CONFIG } from '@config/app';
 import { runMigrations } from './migrations';
 import { seedDatabase } from './seed';
+import { seedDefaultSplit } from './seedSplit';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -19,6 +20,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   // Run migrations and seed data
   await runMigrations(db);
   await seedDatabase(db);
+  await seedDefaultSplit(db);
 
   return db;
 }

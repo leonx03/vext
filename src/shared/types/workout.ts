@@ -49,6 +49,9 @@ export interface ExerciseSlot {
   createdAt: string;
 }
 
+/** How an exercise's rep goal is expressed. 'range' uses targetReps min/max; 'amrap' = to failure. */
+export type RepGoalType = 'range' | 'amrap';
+
 export interface ExerciseOption {
   id: string;
   slotId: string;
@@ -57,6 +60,8 @@ export interface ExerciseOption {
   restSeconds: number;
   targetRepsMin: number | null;
   targetRepsMax: number | null;
+  targetSets: number | null;
+  repGoalType: RepGoalType;
   createdAt: string;
 }
 

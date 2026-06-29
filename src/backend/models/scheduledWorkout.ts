@@ -38,13 +38,15 @@ export async function create(
   db: SQLite.SQLiteDatabase,
   seriesId: string,
   scheduledDate: string,
-  notes?: string | null
+  notes?: string | null,
+  splitId?: string | null,
+  applicationId?: string | null
 ): Promise<ScheduledWorkout> {
   const id = Crypto.randomUUID();
   await db.runAsync(
-    `INSERT INTO scheduled_workouts (id, series_id, scheduled_date, notes)
-     VALUES (?, ?, ?, ?)`,
-    id, seriesId, scheduledDate, notes ?? null
+    `INSERT INTO scheduled_workouts (id, series_id, scheduled_date, notes, split_id, application_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    id, seriesId, scheduledDate, notes ?? null, splitId ?? null, applicationId ?? null
   );
   const row = await db.getFirstAsync<ScheduledWorkoutRow>(
     `${SELECT_WITH_JOIN} WHERE sw.id = ?`,
@@ -91,6 +93,28 @@ export async function update(
 
 export async function remove(db: SQLite.SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync('DELETE FROM scheduled_workouts WHERE id = ?', id);
+}
+
+/**
+ * Remove a split's scheduled entries. Only deletes planned (not-yet-started) rows so any
+ * session already begun from the split is preserved. Pass applicationId to clear a single
+ * applied batch; omit it to clear every planned entry for the split.
+ */
+export async function removeBySplit(
+  db: SQLite.SQLiteDatabase,
+  splitId: string,
+  applicationId?: string | null
+): Promise<number> {
+  const result = applicationId
+    ? await db.runAsync(
+        `DELETE FROM scheduled_workouts WHERE split_id = ? AND application_id = ? AND started_workout_id IS NULL`,
+        splitId, applicationId
+      )
+    : await db.runAsync(
+        `DELETE FROM scheduled_workouts WHERE split_id = ? AND started_workout_id IS NULL`,
+        splitId
+      );
+  return result.changes ?? 0;
 }
 
 export async function markStarted(

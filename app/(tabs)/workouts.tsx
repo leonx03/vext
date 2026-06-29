@@ -176,8 +176,15 @@ export default function WorkoutsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="px-4 py-3">
+      <View className="flex-row items-center justify-between px-4 py-3">
         <Text className="text-2xl font-bold text-foreground">Workouts</Text>
+        <Pressable
+          onPress={() => router.push('/splits')}
+          className="flex-row items-center gap-1.5 rounded-lg bg-background-50 px-3 py-2"
+        >
+          <Ionicons name="calendar-outline" size={16} color="rgb(52, 211, 153)" />
+          <Text className="text-sm font-medium text-primary">Splits</Text>
+        </Pressable>
       </View>
 
       <FlatList
