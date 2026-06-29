@@ -10,8 +10,7 @@ import { useBodyWeightHistory, useLogBodyWeight, useDeleteBodyWeight } from '@fr
 import { WeightSparkline } from '@frontend/components/profile/WeightSparkline';
 import { GymManager } from '@frontend/components/profile/GymManager';
 import { SelectPicker } from '@frontend/components/overlay/SelectPicker';
-import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
-import { formatWeight } from '@shared/utils/formatting';
+import { WeightHistorySheet } from '@frontend/components/overlay/WeightHistorySheet';
 import type { UnitSystem } from '@shared/types/settings';
 
 const RELEASES_URL = 'https://github.com/leonx03/vext/releases';
@@ -43,7 +42,7 @@ export default function ProfileScreen() {
   const [showRestPicker, setShowRestPicker] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [weightError, setWeightError] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; date: string } | null>(null);
+  const [showWeightHistory, setShowWeightHistory] = useState(false);
 
   const { data: weightHistory } = useBodyWeightHistory();
   const logWeight = useLogBodyWeight();
@@ -123,23 +122,18 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          {/* History list */}
-          {weightHistory?.map((entry) => (
-            <View key={entry.id} className="flex-row items-center justify-between py-2 border-b border-background-100">
-              <View>
-                <Text className="text-sm text-foreground">{formatWeight(entry.weightKg, units)}</Text>
-                <Text className="text-xs text-foreground-subtle">{entry.date}</Text>
-              </View>
-              <Pressable
-                onPress={() => setDeleteTarget({ id: entry.id, date: entry.date })}
-                className="p-1.5"
-              >
-                <Ionicons name="trash-outline" size={16} color="rgb(163, 163, 163)" />
-              </Pressable>
-            </View>
-          ))}
-
-          {(!weightHistory || weightHistory.length === 0) && (
+          {/* History */}
+          {weightHistory && weightHistory.length > 0 ? (
+            <Pressable
+              onPress={() => setShowWeightHistory(true)}
+              className="flex-row items-center justify-between rounded-lg bg-background-100 px-3 py-3"
+            >
+              <Text className="text-sm text-foreground">
+                View history ({weightHistory.length} {weightHistory.length === 1 ? 'entry' : 'entries'})
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="rgb(163, 163, 163)" />
+            </Pressable>
+          ) : (
             <Text className="text-xs text-foreground-subtle text-center py-3">No entries yet</Text>
           )}
         </View>
@@ -211,17 +205,12 @@ export default function ProfileScreen() {
         onClose={() => setShowRestPicker(false)}
       />
 
-      <ConfirmDialog
-        visible={!!deleteTarget}
-        title="Delete Entry"
-        message={`Delete weight entry for ${deleteTarget?.date}?`}
-        confirmLabel="Delete"
-        destructive
-        onConfirm={() => {
-          if (deleteTarget) deleteWeight.mutate(deleteTarget.id);
-          setDeleteTarget(null);
-        }}
-        onCancel={() => setDeleteTarget(null)}
+      <WeightHistorySheet
+        visible={showWeightHistory}
+        entries={weightHistory ?? []}
+        units={units}
+        onDelete={(id) => deleteWeight.mutate(id)}
+        onClose={() => setShowWeightHistory(false)}
       />
     </View>
   );
