@@ -1,7 +1,7 @@
 /** Body weight model - CRUD operations for the body_weight_entries table. */
 import type * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
-import type { BodyWeightEntry } from '@shared/types/bodyWeight';
+import type { BodyWeightEntry, WeeklyAverageWeight } from '@shared/types/bodyWeight';
 
 interface BodyWeightRow {
   id: string;
@@ -34,6 +34,40 @@ export async function getRecent(db: SQLite.SQLiteDatabase, limit: number): Promi
     limit
   );
   return rows.map(mapRow);
+}
+
+interface WeeklyAverageRow {
+  week_start: string;
+  avg_weight_kg: number;
+  entry_count: number;
+}
+
+/**
+ * Average body weight per week, most recent week first. Weeks are Monday-anchored: the
+ * `week_start` is computed as the Monday on or before each entry's date, so grouping and the
+ * returned label are the same value (avoids the year-boundary quirks of strftime('%W')).
+ * `%w` is 0=Sunday..6=Saturday, so `(%w + 6) % 7` = days since Monday.
+ */
+export async function getWeeklyAverages(
+  db: SQLite.SQLiteDatabase,
+  limit?: number
+): Promise<WeeklyAverageWeight[]> {
+  const sql = `SELECT
+       date(date, '-' || ((CAST(strftime('%w', date) AS INTEGER) + 6) % 7) || ' days') AS week_start,
+       AVG(weight_kg) AS avg_weight_kg,
+       COUNT(*)       AS entry_count
+     FROM body_weight_entries
+     GROUP BY week_start
+     ORDER BY week_start DESC`;
+  const rows =
+    limit != null
+      ? await db.getAllAsync<WeeklyAverageRow>(`${sql} LIMIT ?`, limit)
+      : await db.getAllAsync<WeeklyAverageRow>(sql);
+  return rows.map((row) => ({
+    weekStart: row.week_start,
+    avgWeightKg: row.avg_weight_kg,
+    entryCount: row.entry_count,
+  }));
 }
 
 export async function getByDate(db: SQLite.SQLiteDatabase, date: string): Promise<BodyWeightEntry | null> {

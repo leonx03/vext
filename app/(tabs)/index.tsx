@@ -6,8 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as progressService from '@backend/services/progressService';
 import { useDatabase } from '@frontend/hooks/useDatabase';
 import { useSettingsStore } from '@backend/store/settingsStore';
-import { useBodyWeightTrend } from '@frontend/hooks/useBodyWeight';
+import { useBodyWeightTrend, useBodyWeightWeeklyAverages } from '@frontend/hooks/useBodyWeight';
 import { WeightSparkline } from '@frontend/components/profile/WeightSparkline';
+import { WeeklyAverages } from '@frontend/components/profile/WeeklyAverages';
 import { MUSCLE_GROUP_LABELS } from '@shared/constants/muscleGroups';
 import type { MuscleGroup } from '@shared/types/exercise';
 
@@ -65,6 +66,7 @@ export default function HomeScreen() {
   });
 
   const { data: weightTrend } = useBodyWeightTrend(30);
+  const { data: weeklyAverages } = useBodyWeightWeeklyAverages(8);
 
   const { data: weeklyPRCount } = useQuery({
     queryKey: ['weeklyPRCount', weekOffset],
@@ -164,6 +166,11 @@ export default function HomeScreen() {
           <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4">
             <Text className="text-sm font-medium text-foreground-muted mb-3">Body Weight</Text>
             <WeightSparkline entries={weightTrend} units={units} />
+            {weeklyAverages && weeklyAverages.length > 0 && (
+              <View className="mt-4 border-t border-background-100 pt-4">
+                <WeeklyAverages weeks={weeklyAverages} units={units} />
+              </View>
+            )}
           </View>
         )}
       </ScrollView>

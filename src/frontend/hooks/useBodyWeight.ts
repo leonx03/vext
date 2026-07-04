@@ -19,6 +19,14 @@ export function useBodyWeightTrend(count: number = 30) {
   });
 }
 
+export function useBodyWeightWeeklyAverages(limit?: number) {
+  const db = useDatabase();
+  return useQuery({
+    queryKey: ['bodyWeight', 'weeklyAverages', limit ?? null],
+    queryFn: () => bodyWeightService.getWeeklyAverages(db, limit),
+  });
+}
+
 export function useLogBodyWeight() {
   const db = useDatabase();
   const queryClient = useQueryClient();
