@@ -162,6 +162,45 @@ Uses expo-sqlite with manual schema migrations managed via `PRAGMA user_version`
 3. **Hooks** (`src/frontend/hooks/`) - React Query mutations/queries wrapping services
 4. **Components** - UI consuming hooks
 
+## Importing Food Data
+
+Bulk-add foods, saved meals, and daily targets by pasting a JSON object into **Profile → Data → Import from JSON**. The import is **idempotent** — foods and meals are matched by name (case-insensitive) and updated in place, so running it more than once never creates duplicates. It runs in a single transaction; if a meal references a food that doesn't exist, the whole import aborts with an error and nothing is written. There is no seeded/personal food data in the app — the data is whatever you paste.
+
+All three top-level keys are optional:
+
+```json
+{
+  "targets": { "calories": 2000, "protein": 165 },
+  "foods": [
+    { "name": "Chicken breast", "serving": 100, "unit": "g", "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6 },
+    { "name": "Egg", "serving": 1, "unit": "unit", "calories": 72, "protein": 6.3, "carbs": 0.4, "fat": 5 }
+  ],
+  "meals": [
+    {
+      "name": "Chicken & rice",
+      "components": [
+        { "food": "Chicken breast", "amount": 150 },
+        { "food": "White rice", "amount": 200 }
+      ]
+    },
+    { "name": "Pizza night", "calories": 750, "protein": 40, "carbs": 70, "fat": 30 }
+  ]
+}
+```
+
+| Field | Notes |
+|---|---|
+| `targets.calories` / `targets.protein` | Daily targets (kcal / grams of protein). |
+| `foods[].name` | Required; the unique key used for the idempotent upsert (case-insensitive). |
+| `foods[].serving` | The amount the macros are given for. Optional, defaults to `100`. |
+| `foods[].unit` | `"g"`, `"ml"`, or `"unit"`. Optional, defaults to `"g"`. |
+| `foods[].calories` / `protein` / `carbs` / `fat` | Macros **per `serving`** (calories are kcal; protein/carbs/fat are grams). |
+| `meals[].name` | Required; unique key for the idempotent upsert. |
+| `meals[].components` | Present ⇒ a **composed** meal whose totals are derived from its foods. Each `{ "food", "amount" }` references a food by `name`; `amount` is in that food's `unit` (grams, or number of units for a `"unit"` food). |
+| `meals[].calories` / `protein` / `carbs` / `fat` | Present with **no** `components` ⇒ a **manual** meal with fixed totals. |
+
+A `components[].food` must exist either in the same import or already in the app.
+
 ## Development Guide
 
 ### Adding a New Exercise Field
