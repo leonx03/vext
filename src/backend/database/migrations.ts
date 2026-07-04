@@ -505,6 +505,68 @@ const migrations: Migration[] = [
       CREATE INDEX idx_scheduled_workouts_split ON scheduled_workouts(split_id);
     `);
   },
+  // v19 → v20: Food & macro tracking. All data is per-install (single local user), so no
+  // user_id. `food_items` hold per-serving macros (calories/protein/carbs/fat per serving_size
+  // of serving_unit). `saved_meals` are reusable meals that are either composed of foods
+  // (`saved_meal_items`) or a manual fixed macro total (kind is explicit, not inferred from
+  // nulls). `food_log_entries` snapshot the resolved, already-scaled macros at log time (like
+  // workout_sets store literal weight/reps) so editing/archiving a food or meal never rewrites
+  // history and daily totals are a plain SUM over the day. No data seeding — foods/meals are
+  // added by the user (or seeded per-device via adb).
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE food_items (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        serving_size REAL NOT NULL,
+        serving_unit TEXT NOT NULL DEFAULT 'g',
+        calories REAL NOT NULL,
+        protein_g REAL NOT NULL,
+        carbs_g REAL NOT NULL,
+        fat_g REAL NOT NULL,
+        archived_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE saved_meals (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'composed',
+        calories REAL,
+        protein_g REAL,
+        carbs_g REAL,
+        fat_g REAL,
+        archived_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE saved_meal_items (
+        id TEXT PRIMARY KEY NOT NULL,
+        saved_meal_id TEXT NOT NULL REFERENCES saved_meals(id) ON DELETE CASCADE,
+        food_id TEXT NOT NULL REFERENCES food_items(id),
+        quantity REAL NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_saved_meal_items_meal ON saved_meal_items(saved_meal_id);
+
+      CREATE TABLE food_log_entries (
+        id TEXT PRIMARY KEY NOT NULL,
+        date TEXT NOT NULL,
+        entry_type TEXT NOT NULL,
+        food_id TEXT REFERENCES food_items(id) ON DELETE SET NULL,
+        saved_meal_id TEXT REFERENCES saved_meals(id) ON DELETE SET NULL,
+        quantity REAL NOT NULL,
+        name TEXT NOT NULL,
+        calories REAL NOT NULL,
+        protein_g REAL NOT NULL,
+        carbs_g REAL NOT NULL,
+        fat_g REAL NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_food_log_entries_date ON food_log_entries(date);
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

@@ -2,7 +2,7 @@
 export const APP_CONFIG = {
   database: {
     name: 'vext.db',
-    schemaVersion: 19,
+    schemaVersion: 20,
   },
   defaults: {
     restSeconds: {
@@ -13,6 +13,8 @@ export const APP_CONFIG = {
     units: 'metric' as const,
     historyPageSize: 20,
     searchDebounceMs: 300,
+    dailyCalorieTarget: 2000,
+    dailyProteinTarget: 150,
   },
   validation: {
     weight: { min: 0, max: 9999 },
@@ -22,5 +24,11 @@ export const APP_CONFIG = {
     exerciseName: { min: 1, max: 100 },
     workoutName: { min: 0, max: 200 },
     notes: { min: 0, max: 1000 },
+    foodName: { min: 1, max: 100 },
+    servingSize: { min: 0.01, max: 100000 },
+    macro: { min: 0, max: 100000 }, // calories or grams
+    quantity: { min: 0.01, max: 100000 },
+    calorieTarget: { min: 0, max: 20000 },
+    proteinTarget: { min: 0, max: 2000 },
   },
 } as const;
