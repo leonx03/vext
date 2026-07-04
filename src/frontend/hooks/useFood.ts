@@ -1,7 +1,9 @@
 /** Food hooks - React Query queries and mutations for foods, saved meals, and daily logging. */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as foodService from '@backend/services/foodService';
+import * as importService from '@backend/services/importService';
 import { useDatabase } from '@frontend/hooks/useDatabase';
+import { useSettingsStore } from '@backend/store/settingsStore';
 import type { FoodItemInput, SavedMealInput } from '@shared/types/food';
 
 // ---- Queries ----------------------------------------------------------------
@@ -98,4 +100,18 @@ export function useUpdateLogQuantity() {
 
 export function useDeleteLogEntry() {
   return useFoodMutation((db, id: string) => foodService.deleteLogEntry(db, id));
+}
+
+/** Import personal foods/meals/targets from a JSON string (idempotent upsert). */
+export function useImportSeed() {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (json: string) => importService.importFromJson(db, json),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['food'] });
+      // Refresh the settings store so any imported targets show immediately.
+      await useSettingsStore.getState().loadSettings(db);
+    },
+  });
 }

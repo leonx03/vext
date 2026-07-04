@@ -12,6 +12,7 @@ import { WeeklyAverages } from '@frontend/components/profile/WeeklyAverages';
 import { GymManager } from '@frontend/components/profile/GymManager';
 import { SelectPicker } from '@frontend/components/overlay/SelectPicker';
 import { WeightHistorySheet } from '@frontend/components/overlay/WeightHistorySheet';
+import { ImportSheet } from '@frontend/components/food/ImportSheet';
 import type { UnitSystem } from '@shared/types/settings';
 
 const RELEASES_URL = 'https://github.com/leonx03/vext/releases';
@@ -44,6 +45,7 @@ export default function ProfileScreen() {
   const [weightInput, setWeightInput] = useState('');
   const [weightError, setWeightError] = useState<string | null>(null);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const { data: weightHistory } = useBodyWeightHistory();
   const { data: weeklyAverages } = useBodyWeightWeeklyAverages(8);
@@ -188,6 +190,24 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
+        {/* Data */}
+        <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4">
+          <Text className="text-sm font-medium text-foreground-muted mb-3">Data</Text>
+          <Pressable
+            onPress={() => setShowImport(true)}
+            className="flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="download-outline" size={20} color="rgb(163, 163, 163)" />
+              <Text className="text-base text-foreground">Import from JSON</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="rgb(163, 163, 163)" />
+          </Pressable>
+          <Text className="mt-2 text-xs text-foreground-subtle">
+            Bulk-add foods, saved meals, and targets. Safe to run more than once.
+          </Text>
+        </View>
+
         {/* About */}
         <View className="mx-4 mt-3 rounded-xl bg-background-50 p-4">
           <Text className="text-sm font-medium text-foreground-muted mb-3">About</Text>
@@ -221,6 +241,8 @@ export default function ProfileScreen() {
         onDelete={(id) => deleteWeight.mutate(id)}
         onClose={() => setShowWeightHistory(false)}
       />
+
+      <ImportSheet visible={showImport} onClose={() => setShowImport(false)} />
     </View>
   );
 }

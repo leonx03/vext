@@ -34,6 +34,16 @@ export async function getById(db: SQLite.SQLiteDatabase, id: string): Promise<Sa
   return row ? mapRow(row) : null;
 }
 
+/** Find an active (non-archived) saved meal by name, case-insensitive. Used for idempotent import. */
+export async function getByName(db: SQLite.SQLiteDatabase, name: string): Promise<SavedMeal | null> {
+  const row = await db.getFirstAsync<SavedMealRow>(
+    `SELECT * FROM saved_meals WHERE name = ? COLLATE NOCASE AND archived_at IS NULL
+     ORDER BY created_at ASC LIMIT 1`,
+    name
+  );
+  return row ? mapRow(row) : null;
+}
+
 export async function getAll(
   db: SQLite.SQLiteDatabase,
   includeArchived = false
