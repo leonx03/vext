@@ -127,6 +127,23 @@ export function formatPrescription(
   return `${setPart}${repPart}`;
 }
 
+/** Calories, rounded to a whole number: 507.5 -> "508 kcal". */
+export function formatCalories(kcal: number): string {
+  return `${Math.round(kcal)} kcal`;
+}
+
+/** A macro weight in grams, at most one decimal: 51.94 -> "51.9 g". */
+export function formatGrams(grams: number): string {
+  return `${Number(grams.toFixed(1))} g`;
+}
+
+/** An amount in a food's serving unit: (150,'g') -> "150 g", (1,'unit') -> "1 unit", (2,'unit') -> "2 units". */
+export function formatAmount(quantity: number, unit: 'g' | 'ml' | 'unit'): string {
+  const n = Number(quantity.toFixed(unit === 'unit' ? 2 : 1));
+  if (unit === 'unit') return `${n} ${n === 1 ? 'unit' : 'units'}`;
+  return `${n} ${unit}`;
+}
+
 export function formatCompactNumber(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';

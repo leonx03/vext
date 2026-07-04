@@ -10,6 +10,10 @@ interface SettingsStore extends AppSettings {
   loadSettings: (db: SQLite.SQLiteDatabase) => Promise<void>;
   updateUnits: (db: SQLite.SQLiteDatabase, units: UnitSystem) => Promise<void>;
   updateDefaultRestSeconds: (db: SQLite.SQLiteDatabase, seconds: number) => Promise<void>;
+  updateMacroTargets: (
+    db: SQLite.SQLiteDatabase,
+    targets: { dailyCalorieTarget: number; dailyProteinTarget: number }
+  ) => Promise<void>;
 }
 
 function getLocaleDefaultUnits(): UnitSystem {
@@ -50,17 +54,23 @@ async function writeSetting(db: SQLite.SQLiteDatabase, key: string, value: strin
 export const useSettingsStore = create<SettingsStore>((set) => ({
   units: APP_CONFIG.defaults.units,
   defaultRestSeconds: APP_CONFIG.defaults.restSeconds.strength,
+  dailyCalorieTarget: APP_CONFIG.defaults.dailyCalorieTarget,
+  dailyProteinTarget: APP_CONFIG.defaults.dailyProteinTarget,
   isLoaded: false,
 
   loadSettings: async (db) => {
     const unitsVal = await readSetting(db, 'units');
     const restVal = await readSetting(db, 'defaultRestSeconds');
+    const calorieVal = await readSetting(db, 'dailyCalorieTarget');
+    const proteinVal = await readSetting(db, 'dailyProteinTarget');
 
     const validUnits: UnitSystem[] = ['metric', 'imperial'];
     const units: UnitSystem = validUnits.includes(unitsVal as UnitSystem)
       ? (unitsVal as UnitSystem)
       : getLocaleDefaultUnits();
     const defaultRestSeconds = restVal ? parseInt(restVal, 10) : APP_CONFIG.defaults.restSeconds.strength;
+    const dailyCalorieTarget = calorieVal ? parseInt(calorieVal, 10) : APP_CONFIG.defaults.dailyCalorieTarget;
+    const dailyProteinTarget = proteinVal ? parseInt(proteinVal, 10) : APP_CONFIG.defaults.dailyProteinTarget;
 
     // Persist locale-based default if no setting exists yet
     if (!unitsVal) {
@@ -70,7 +80,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       await writeSetting(db, 'defaultRestSeconds', String(defaultRestSeconds));
     }
 
-    set({ units, defaultRestSeconds, isLoaded: true });
+    set({ units, defaultRestSeconds, dailyCalorieTarget, dailyProteinTarget, isLoaded: true });
   },
 
   updateUnits: async (db, units) => {
@@ -81,5 +91,11 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   updateDefaultRestSeconds: async (db, seconds) => {
     await writeSetting(db, 'defaultRestSeconds', String(seconds));
     set({ defaultRestSeconds: seconds });
+  },
+
+  updateMacroTargets: async (db, { dailyCalorieTarget, dailyProteinTarget }) => {
+    await writeSetting(db, 'dailyCalorieTarget', String(dailyCalorieTarget));
+    await writeSetting(db, 'dailyProteinTarget', String(dailyProteinTarget));
+    set({ dailyCalorieTarget, dailyProteinTarget });
   },
 }));
