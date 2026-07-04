@@ -6,8 +6,9 @@ import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { useSettingsStore } from '@backend/store/settingsStore';
 import { useDatabase } from '@frontend/hooks/useDatabase';
-import { useBodyWeightHistory, useLogBodyWeight, useDeleteBodyWeight } from '@frontend/hooks/useBodyWeight';
+import { useBodyWeightHistory, useLogBodyWeight, useDeleteBodyWeight, useBodyWeightWeeklyAverages } from '@frontend/hooks/useBodyWeight';
 import { WeightSparkline } from '@frontend/components/profile/WeightSparkline';
+import { WeeklyAverages } from '@frontend/components/profile/WeeklyAverages';
 import { GymManager } from '@frontend/components/profile/GymManager';
 import { SelectPicker } from '@frontend/components/overlay/SelectPicker';
 import { WeightHistorySheet } from '@frontend/components/overlay/WeightHistorySheet';
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const [showWeightHistory, setShowWeightHistory] = useState(false);
 
   const { data: weightHistory } = useBodyWeightHistory();
+  const { data: weeklyAverages } = useBodyWeightWeeklyAverages(8);
   const logWeight = useLogBodyWeight();
   const deleteWeight = useDeleteBodyWeight();
 
@@ -119,6 +121,13 @@ export default function ProfileScreen() {
           {weightHistory && weightHistory.length > 0 && (
             <View className="mb-3">
               <WeightSparkline entries={weightHistory.slice(0, 30)} units={units} />
+            </View>
+          )}
+
+          {/* Weekly averages */}
+          {weeklyAverages && weeklyAverages.length > 0 && (
+            <View className="mb-3 border-t border-background-100 pt-3">
+              <WeeklyAverages weeks={weeklyAverages} units={units} />
             </View>
           )}
 

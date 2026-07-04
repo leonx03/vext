@@ -73,6 +73,33 @@ export function formatPlainDate(dateStr: string): string {
   return format(new Date(y, m - 1, d), 'EEE, MMM d yyyy');
 }
 
+/** YYYY-MM-DD of the Monday on or before the given local date. */
+function localMonday(d: Date): string {
+  const daysSinceMonday = (d.getDay() + 6) % 7; // getDay: 0=Sun..6=Sat
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysSinceMonday);
+  const m = String(monday.getMonth() + 1).padStart(2, '0');
+  const day = String(monday.getDate()).padStart(2, '0');
+  return `${monday.getFullYear()}-${m}-${day}`;
+}
+
+/**
+ * Label a Monday-anchored week from its start date (YYYY-MM-DD): "This week", "Last week",
+ * or a range like "Jun 29 – Jul 5" (or "Jun 2 – 8" when both ends share a month).
+ */
+export function formatWeekRange(weekStart: string): string {
+  const [y, m, d] = weekStart.split('-').map(Number);
+  if (!y || !m || !d) return weekStart;
+  const now = new Date();
+  if (weekStart === localMonday(now)) return 'This week';
+  const lastWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  if (weekStart === localMonday(lastWeek)) return 'Last week';
+  const monday = new Date(y, m - 1, d);
+  const sunday = new Date(y, m - 1, d + 6); // JS normalizes month overflow
+  const startFmt = format(monday, 'MMM d');
+  const endFmt = format(sunday, monday.getMonth() === sunday.getMonth() ? 'd' : 'MMM d');
+  return `${startFmt} – ${endFmt}`;
+}
+
 /** Short rest display, e.g. 45 -> "45s", 120 -> "2 min", 240 -> "4 min". */
 export function formatRestShort(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;

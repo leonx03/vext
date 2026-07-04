@@ -1,7 +1,7 @@
 /** Body weight service - business logic for logging and retrieving body weight entries. */
 import type * as SQLite from 'expo-sqlite';
 import * as bodyWeightModel from '@backend/models/bodyWeight';
-import type { BodyWeightEntry } from '@shared/types/bodyWeight';
+import type { BodyWeightEntry, WeeklyAverageWeight } from '@shared/types/bodyWeight';
 
 export async function logWeight(
   db: SQLite.SQLiteDatabase,
@@ -18,6 +18,13 @@ export async function getHistory(db: SQLite.SQLiteDatabase): Promise<BodyWeightE
 
 export async function getRecentTrend(db: SQLite.SQLiteDatabase, count: number): Promise<BodyWeightEntry[]> {
   return bodyWeightModel.getRecent(db, count);
+}
+
+export async function getWeeklyAverages(
+  db: SQLite.SQLiteDatabase,
+  limit?: number
+): Promise<WeeklyAverageWeight[]> {
+  return bodyWeightModel.getWeeklyAverages(db, limit);
 }
 
 export async function deleteEntry(db: SQLite.SQLiteDatabase, id: string): Promise<void> {
