@@ -99,3 +99,47 @@ export interface MacroTargets {
   dailyCalorieTarget: number;
   dailyProteinTarget: number;
 }
+
+// ---- JSON import (personal seed data) --------------------------------------
+// Human-writable shapes used by the "Import from JSON" feature. Macros use plain
+// keys (protein/carbs/fat) rather than the internal *G suffix for readability.
+
+export interface ImportFood {
+  name: string;
+  serving?: number; // defaults to 100
+  unit?: ServingUnit; // defaults to 'g'
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface ImportMealComponent {
+  food: string; // references an ImportFood.name (or an existing food)
+  amount: number; // in the referenced food's serving unit
+}
+
+export interface ImportMeal {
+  name: string;
+  /** Present => composed meal built from these components. */
+  components?: ImportMealComponent[];
+  /** Present (and no components) => manual fixed-total meal. */
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
+
+export interface ImportPayload {
+  targets?: { calories: number; protein: number };
+  foods?: ImportFood[];
+  meals?: ImportMeal[];
+}
+
+export interface ImportResult {
+  foodsCreated: number;
+  foodsUpdated: number;
+  mealsCreated: number;
+  mealsUpdated: number;
+  targetsSet: boolean;
+}
