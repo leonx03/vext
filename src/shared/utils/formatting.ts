@@ -1,6 +1,7 @@
 /** Formatting utils - date formatting, duration display, and relative time helpers. */
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import type { UnitSystem } from '@shared/types/settings';
+import { ExerciseTrackingType } from '@shared/types/exercise';
 
 /** Parse a database timestamp (SQLite datetime('now') returns UTC without a suffix). */
 export function parseUTCTimestamp(timestamp: string): Date {
@@ -115,9 +116,20 @@ export function formatPrescription(
   sets: number | null,
   repsMin: number | null,
   repsMax: number | null,
-  repGoalType: 'range' | 'amrap' = 'range'
+  repGoalType: 'range' | 'amrap' = 'range',
+  trackingType: ExerciseTrackingType = ExerciseTrackingType.Weighted
 ): string {
   const setPart = sets != null ? `${sets} × ` : '';
+  if (trackingType === ExerciseTrackingType.Time) {
+    // Time exercises express the goal in seconds (or "max hold" for AMRAP).
+    if (repGoalType === 'amrap') return `${setPart}max hold`;
+    if (repsMin == null && repsMax == null) return sets != null ? `${sets} sets` : '—';
+    let secPart: string;
+    if (repsMax == null) secPart = `${repsMin}s+`;
+    else if (repsMin === repsMax) secPart = `${repsMin}s`;
+    else secPart = `${repsMin}-${repsMax}s`;
+    return `${setPart}${secPart}`;
+  }
   if (repGoalType === 'amrap') return `${setPart}AMRAP`;
   if (repsMin == null && repsMax == null) return sets != null ? `${sets} sets` : '—';
   let repPart: string;
@@ -125,6 +137,29 @@ export function formatPrescription(
   else if (repsMin === repsMax) repPart = `${repsMin}`;
   else repPart = `${repsMin}-${repsMax}`;
   return `${setPart}${repPart}`;
+}
+
+/**
+ * One-line summary of a logged set, adapting to how it was tracked:
+ *   weight+reps -> "80 kg × 8 reps"; bodyweight load -> "green band × 8 reps";
+ *   reps only -> "8 reps"; time (+distance) -> "45s" / "300s · 1000m"; empty -> "—".
+ */
+export function formatSetSummary(set: {
+  weightKg: number | null;
+  reps: number | null;
+  durationSeconds: number | null;
+  distanceMeters: number | null;
+  customFields: Record<string, unknown> | null;
+}): string {
+  const load = typeof set.customFields?.load === 'string' ? (set.customFields.load as string) : null;
+  if (set.weightKg != null && set.reps != null) return `${set.weightKg} kg × ${set.reps} reps`;
+  if (load && set.reps != null) return `${load} × ${set.reps} reps`;
+  if (load) return load;
+  if (set.reps != null) return `${set.reps} reps`;
+  if (set.durationSeconds != null) {
+    return `${set.durationSeconds}s${set.distanceMeters != null ? ` · ${set.distanceMeters}m` : ''}`;
+  }
+  return '—';
 }
 
 /** Calories, rounded to a whole number: 507.5 -> "508 kcal". */

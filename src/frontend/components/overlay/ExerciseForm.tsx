@@ -1,15 +1,23 @@
 /** ExerciseForm - full-screen modal for creating and editing exercises. */
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, Pressable, ScrollView, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { cn } from '@frontend/lib/utils';
 import { MUSCLE_GROUP_LABELS, ALL_MUSCLE_GROUPS } from '@shared/constants/muscleGroups';
 import { EQUIPMENT_LABELS, ALL_EQUIPMENT } from '@shared/constants/equipment';
+import { ExerciseTrackingType, TRACKING_TYPE_LABELS } from '@shared/types/exercise';
 import type { Exercise, ExerciseCategory, MuscleGroup, Equipment } from '@shared/types/exercise';
 
 const CATEGORIES: { label: string; value: ExerciseCategory }[] = [
   { label: 'Strength', value: 'strength' as ExerciseCategory },
   { label: 'Cardio', value: 'cardio' as ExerciseCategory },
   { label: 'Flexibility', value: 'flexibility' as ExerciseCategory },
+];
+
+const TRACKING_TYPES: { label: string; value: ExerciseTrackingType; hint: string }[] = [
+  { label: TRACKING_TYPE_LABELS[ExerciseTrackingType.Weighted], value: ExerciseTrackingType.Weighted, hint: 'kg × reps' },
+  { label: TRACKING_TYPE_LABELS[ExerciseTrackingType.Bodyweight], value: ExerciseTrackingType.Bodyweight, hint: 'free load (bw / band / +5kg) × reps' },
+  { label: TRACKING_TYPE_LABELS[ExerciseTrackingType.Time], value: ExerciseTrackingType.Time, hint: 'a timed hold in seconds' },
 ];
 
 type ExerciseFormData = {
@@ -19,6 +27,7 @@ type ExerciseFormData = {
   equipment: Equipment;
   instructions: string | null;
   restSeconds: number | null;
+  trackingType: ExerciseTrackingType;
 };
 
 type ExerciseFormProps = {
@@ -35,6 +44,7 @@ export function ExerciseForm({ visible, onClose, onSave, exercise }: ExerciseFor
   const [equipment, setEquipment] = useState<Equipment>('bodyweight' as Equipment);
   const [instructions, setInstructions] = useState('');
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
+  const [trackingType, setTrackingType] = useState<ExerciseTrackingType>(ExerciseTrackingType.Weighted);
 
   const isEditing = !!exercise;
 
@@ -46,6 +56,7 @@ export function ExerciseForm({ visible, onClose, onSave, exercise }: ExerciseFor
       setEquipment(exercise.equipment);
       setInstructions(exercise.instructions ?? '');
       setRestSeconds(exercise.restSeconds);
+      setTrackingType(exercise.trackingType);
     } else if (visible) {
       setName('');
       setCategory('strength' as ExerciseCategory);
@@ -53,6 +64,7 @@ export function ExerciseForm({ visible, onClose, onSave, exercise }: ExerciseFor
       setEquipment('bodyweight' as Equipment);
       setInstructions('');
       setRestSeconds(null);
+      setTrackingType(ExerciseTrackingType.Weighted);
     }
   }, [visible, exercise]);
 
@@ -75,6 +87,7 @@ export function ExerciseForm({ visible, onClose, onSave, exercise }: ExerciseFor
       equipment,
       instructions: instructions.trim() || null,
       restSeconds,
+      trackingType,
     });
     onClose();
   };
@@ -129,6 +142,32 @@ export function ExerciseForm({ visible, onClose, onSave, exercise }: ExerciseFor
                 </Text>
               </Pressable>
             ))}
+          </View>
+
+          {/* Tracking type */}
+          <Text className="mt-5 text-sm font-medium text-foreground">Tracking</Text>
+          <View className="mt-2 gap-2">
+            {TRACKING_TYPES.map((t) => {
+              const isSelected = trackingType === t.value;
+              return (
+                <Pressable
+                  key={t.value}
+                  onPress={() => setTrackingType(t.value)}
+                  className={cn(
+                    'flex-row items-center justify-between rounded-xl px-4 py-3',
+                    isSelected ? 'bg-primary/20 border border-primary' : 'bg-background-50 border border-transparent'
+                  )}
+                >
+                  <View className="flex-1 pr-2">
+                    <Text className={cn('text-sm font-medium', isSelected ? 'text-primary' : 'text-foreground')}>
+                      {t.label}
+                    </Text>
+                    <Text className="text-xs text-foreground-subtle">{t.hint}</Text>
+                  </View>
+                  {isSelected && <Ionicons name="checkmark-circle" size={20} color="rgb(52, 211, 153)" />}
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Primary Muscles */}

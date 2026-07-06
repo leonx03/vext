@@ -1,4 +1,6 @@
 /** Workout types - TypeScript interfaces for Workout, WorkoutExercise, WorkoutSet, SupersetGroup, and related types. */
+import type { ExerciseTrackingType } from '@shared/types/exercise';
+
 export enum WorkoutStatus {
   InProgress = 'in_progress',
   Completed = 'completed',
@@ -111,6 +113,7 @@ export interface WorkoutFull extends Workout {
 export interface WorkoutExerciseFull extends WorkoutExercise {
   exerciseName: string;
   exerciseCategory: string;
+  trackingType: ExerciseTrackingType;
   /** Per-workout note for the currently-selected alternative (exercise option). */
   note: string | null;
   sets: WorkoutSet[];

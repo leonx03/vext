@@ -109,14 +109,15 @@ async function ensureExercises(db: SQLite.SQLiteDatabase): Promise<Map<string, s
       continue;
     }
     await db.runAsync(
-      `INSERT OR IGNORE INTO exercises (id, name, category, primary_muscles, equipment, instructions, is_default)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+      `INSERT OR IGNORE INTO exercises (id, name, category, primary_muscles, equipment, instructions, tracking_type, is_default)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
       Crypto.randomUUID(),
       seed.name,
       seed.category,
       JSON.stringify(seed.primaryMuscles),
       seed.equipment,
-      seed.instructions
+      seed.instructions,
+      seed.trackingType ?? 'weighted'
     );
   }
 

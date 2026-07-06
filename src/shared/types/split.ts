@@ -1,4 +1,5 @@
 /** Split types - workout split planning (ordered workout/rest days applied for N cycles). */
+import type { ExerciseTrackingType } from '@shared/types/exercise';
 
 export type SplitDayType = 'workout' | 'rest';
 
@@ -41,6 +42,7 @@ export interface SeriesTemplateExercise {
   targetRepsMin: number | null;
   targetRepsMax: number | null;
   repGoalType: 'range' | 'amrap';
+  trackingType: ExerciseTrackingType;
   note: string | null;
   alternatives: { exerciseId: string; exerciseName: string }[];
 }

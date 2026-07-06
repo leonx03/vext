@@ -188,7 +188,7 @@ export async function getLatestSetsForExercise(
        AND EXISTS (
          SELECT 1 FROM workout_sets ws
          WHERE ws.workout_exercise_id = we.id
-           AND (ws.weight_kg IS NOT NULL OR ws.duration_seconds IS NOT NULL OR ws.distance_meters IS NOT NULL)
+           AND (ws.weight_kg IS NOT NULL OR ws.reps IS NOT NULL OR ws.duration_seconds IS NOT NULL OR ws.distance_meters IS NOT NULL)
        )
      ORDER BY w.completed_at DESC
      LIMIT 1`,

@@ -567,6 +567,16 @@ const migrations: Migration[] = [
       CREATE INDEX idx_food_log_entries_date ON food_log_entries(date);
     `);
   },
+  // v20 → v21: Per-exercise tracking type. An exercise is now logged as one of:
+  // 'weighted' (weight × reps, the default), 'time' (a duration hold in seconds, optionally
+  // AMRAP "max hold"), or 'bodyweight' (a free-text load like "bw"/"green band"/"+5kg" × reps,
+  // stored in the set's existing custom_fields JSON). Existing exercises default to 'weighted'
+  // so there's no behavior change on upgrade.
+  async (db) => {
+    await db.execAsync(`
+      ALTER TABLE exercises ADD COLUMN tracking_type TEXT NOT NULL DEFAULT 'weighted';
+    `);
+  },
 ];
 
 export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {

@@ -4,6 +4,7 @@ import * as Crypto from 'expo-crypto';
 import {
   Exercise,
   ExerciseCategory,
+  ExerciseTrackingType,
   Equipment,
   MuscleGroup,
 } from '@shared/types/exercise';
@@ -16,6 +17,7 @@ interface ExerciseRow {
   equipment: string;
   instructions: string | null;
   rest_seconds: number | null;
+  tracking_type: string;
   is_default: number;
   archived_at: string | null;
   created_at: string;
@@ -38,6 +40,7 @@ function mapRow(row: ExerciseRow): Exercise {
     equipment: row.equipment as Equipment,
     instructions: row.instructions,
     restSeconds: row.rest_seconds,
+    trackingType: (row.tracking_type as ExerciseTrackingType) ?? ExerciseTrackingType.Weighted,
     isDefault: row.is_default === 1,
     archivedAt: row.archived_at,
     createdAt: row.created_at,
@@ -106,19 +109,21 @@ export async function create(
     equipment: Equipment;
     instructions?: string | null;
     restSeconds?: number | null;
+    trackingType?: ExerciseTrackingType;
   }
 ): Promise<Exercise> {
   const id = Crypto.randomUUID();
   await db.runAsync(
-    `INSERT INTO exercises (id, name, category, primary_muscles, equipment, instructions, rest_seconds, is_default, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0, datetime('now'))`,
+    `INSERT INTO exercises (id, name, category, primary_muscles, equipment, instructions, rest_seconds, tracking_type, is_default, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'))`,
     id,
     data.name,
     data.category,
     JSON.stringify(data.primaryMuscles),
     data.equipment,
     data.instructions ?? null,
-    data.restSeconds ?? null
+    data.restSeconds ?? null,
+    data.trackingType ?? ExerciseTrackingType.Weighted
   );
   const exercise = await getById(db, id);
   if (!exercise) throw new Error(`Failed to create exercise with id ${id}`);
@@ -135,6 +140,7 @@ export async function update(
     equipment?: Equipment;
     instructions?: string | null;
     restSeconds?: number | null;
+    trackingType?: ExerciseTrackingType;
   }
 ): Promise<Exercise> {
   const fields: string[] = [];
@@ -146,6 +152,7 @@ export async function update(
   if (data.equipment !== undefined) { fields.push('equipment = ?'); values.push(data.equipment); }
   if (data.instructions !== undefined) { fields.push('instructions = ?'); values.push(data.instructions); }
   if (data.restSeconds !== undefined) { fields.push('rest_seconds = ?'); values.push(data.restSeconds); }
+  if (data.trackingType !== undefined) { fields.push('tracking_type = ?'); values.push(data.trackingType); }
 
   if (fields.length === 0) {
     const exercise = await getById(db, id);

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import * as exerciseModel from '@backend/models/exercise';
 import * as exerciseService from '@backend/services/exerciseService';
 import { useDatabase } from '@frontend/hooks/useDatabase';
-import type { ExerciseCategory, Equipment, MuscleGroup } from '@shared/types/exercise';
+import type { ExerciseCategory, ExerciseTrackingType, Equipment, MuscleGroup } from '@shared/types/exercise';
 import { APP_CONFIG } from '@config/app';
 
 export function useExercises(category?: ExerciseCategory) {
@@ -53,6 +53,7 @@ export function useCreateExercise() {
       equipment: Equipment;
       instructions?: string | null;
       restSeconds?: number | null;
+      trackingType?: ExerciseTrackingType;
     }) => exerciseService.createExercise(db, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exercises'] });
@@ -73,6 +74,7 @@ export function useUpdateExercise() {
         equipment?: Equipment;
         instructions?: string | null;
         restSeconds?: number | null;
+        trackingType?: ExerciseTrackingType;
       };
     }) => exerciseService.updateExercise(db, id, data),
     onSuccess: (_, variables) => {

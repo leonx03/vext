@@ -32,6 +32,24 @@ export enum ExerciseCategory {
   Flexibility = 'flexibility',
 }
 
+/**
+ * How an exercise's sets are measured, independent of the workout type:
+ * - `weighted` — weight (kg) × reps. Default; unchanged behavior.
+ * - `time` — a single duration-in-seconds field (a hold), optionally AMRAP ("max hold").
+ * - `bodyweight` — a free-text load ("bw" / "green band" / "+5kg") × reps, stored on the set.
+ */
+export enum ExerciseTrackingType {
+  Weighted = 'weighted',
+  Time = 'time',
+  Bodyweight = 'bodyweight',
+}
+
+export const TRACKING_TYPE_LABELS: Record<ExerciseTrackingType, string> = {
+  [ExerciseTrackingType.Weighted]: 'Weight × reps',
+  [ExerciseTrackingType.Time]: 'Time',
+  [ExerciseTrackingType.Bodyweight]: 'Bodyweight',
+};
+
 export interface Exercise {
   id: string;
   name: string;
@@ -40,6 +58,7 @@ export interface Exercise {
   equipment: Equipment;
   instructions: string | null;
   restSeconds: number | null;
+  trackingType: ExerciseTrackingType;
   isDefault: boolean;
   archivedAt: string | null;
   createdAt: string;
@@ -52,4 +71,5 @@ export interface ExerciseSeed {
   equipment: Equipment;
   instructions: string | null;
   restSeconds?: number | null;
+  trackingType?: ExerciseTrackingType;
 }
