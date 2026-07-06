@@ -55,13 +55,14 @@ export async function seedDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     for (const exercise of SEED_EXERCISES) {
       const id = Crypto.randomUUID();
       await db.runAsync(
-        'INSERT INTO exercises (id, name, category, primary_muscles, equipment, instructions, is_default) VALUES (?, ?, ?, ?, ?, ?, 1)',
+        'INSERT INTO exercises (id, name, category, primary_muscles, equipment, instructions, tracking_type, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
         id,
         exercise.name,
         exercise.category,
         JSON.stringify(exercise.primaryMuscles),
         exercise.equipment,
-        exercise.instructions
+        exercise.instructions,
+        exercise.trackingType ?? 'weighted'
       );
     }
   });

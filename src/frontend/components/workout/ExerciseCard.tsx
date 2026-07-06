@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SetRow } from './SetRow';
+import { getSetInputMode, isSetComplete } from './setInputMode';
 import { AlternativesModal } from './AlternativesModal';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import type { WorkoutExerciseFull, WorkoutSet } from '@shared/types/workout';
+import type { WorkoutSetInput } from '@backend/models/workoutSet';
 
 function parseRepRange(input: string): { min: number | null; max: number | null } {
   const trimmed = input.trim();
@@ -37,7 +39,7 @@ type ExerciseCardProps = {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onAddSet: () => void;
-  onSaveSet: (setId: string, data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
+  onSaveSet: (setId: string, data: WorkoutSetInput) => void;
   onRemoveSet: (setId: string) => void;
   onRemoveExercise: () => void;
   onUpdateRestSeconds: (seconds: number) => void;
@@ -65,6 +67,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   onMakeSuperset,
   onSwitchToAlternative,
 }: ExerciseCardProps) {
+  const mode = getSetInputMode(isStrength, exercise.trackingType);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
   const [editingRepGoal, setEditingRepGoal] = useState(false);
@@ -92,14 +95,12 @@ export const ExerciseCard = React.memo(function ExerciseCard({
   // Auto-collapse once when all sets are done; never re-triggers after manual expand
   useEffect(() => {
     if (hasAutoCollapsed || exercise.sets.length === 0) return;
-    const allDone = isStrength
-      ? exercise.sets.every((s) => s.weightKg != null && s.reps != null)
-      : exercise.sets.every((s) => s.durationSeconds != null);
+    const allDone = exercise.sets.every((s) => isSetComplete(mode, s));
     if (allDone) {
       setIsCollapsed(true);
       setHasAutoCollapsed(true);
     }
-  }, [exercise.sets, isStrength, hasAutoCollapsed]);
+  }, [exercise.sets, mode, hasAutoCollapsed]);
 
   const handleUpdateRest = (newVal: number) => {
     setLocalRestSeconds(newVal);
@@ -158,17 +159,19 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     </Text>
                   </Pressable>
 
-                  <Pressable
-                    onPress={() => setEditingRepGoal(!editingRepGoal)}
-                    className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
-                  >
-                    <Ionicons name="fitness-outline" size={14} color="rgb(163, 163, 163)" />
-                    <Text className="ml-1 text-xs text-foreground-muted">
-                      {exercise.targetRepsMin != null && exercise.targetRepsMax != null
-                        ? `Goal: ${formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax)} reps`
-                        : 'Rep goal'}
-                    </Text>
-                  </Pressable>
+                  {mode !== 'time' && (
+                    <Pressable
+                      onPress={() => setEditingRepGoal(!editingRepGoal)}
+                      className="flex-row items-center rounded-full bg-background-100 px-3 py-1"
+                    >
+                      <Ionicons name="fitness-outline" size={14} color="rgb(163, 163, 163)" />
+                      <Text className="ml-1 text-xs text-foreground-muted">
+                        {exercise.targetRepsMin != null && exercise.targetRepsMax != null
+                          ? `Goal: ${formatRepRange(exercise.targetRepsMin, exercise.targetRepsMax)} reps`
+                          : 'Rep goal'}
+                      </Text>
+                    </Pressable>
+                  )}
 
                   {onSaveNote && (
                     <Pressable
@@ -268,13 +271,24 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                 {/* Header row */}
                 <View className="flex-row items-center py-1 gap-2 mb-1">
                   <View className="w-8" />
-                  {isStrength ? (
+                  {mode === 'weighted' && (
                     <>
                       <Text className="flex-1 text-center text-xs text-foreground-subtle">Weight</Text>
                       <Text className="text-xs text-foreground-subtle" />
                       <Text className="flex-1 text-center text-xs text-foreground-subtle">Reps</Text>
                     </>
-                  ) : (
+                  )}
+                  {mode === 'bodyweight' && (
+                    <>
+                      <Text className="flex-1 text-center text-xs text-foreground-subtle">Load</Text>
+                      <Text className="text-xs text-foreground-subtle" />
+                      <Text className="flex-1 text-center text-xs text-foreground-subtle">Reps</Text>
+                    </>
+                  )}
+                  {mode === 'time' && (
+                    <Text className="flex-1 text-center text-xs text-foreground-subtle">Duration (s)</Text>
+                  )}
+                  {mode === 'cardio' && (
                     <>
                       <Text className="flex-1 text-center text-xs text-foreground-subtle">Duration</Text>
                       <Text className="flex-1 text-center text-xs text-foreground-subtle">Distance</Text>
@@ -291,7 +305,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     set={set}
                     previousSet={previousSets?.[index]}
                     setNumber={set.setNumber}
-                    isStrength={isStrength}
+                    mode={mode}
                     targetRepsMin={exercise.targetRepsMin}
                     targetRepsMax={exercise.targetRepsMax}
                     restSeconds={exercise.restSeconds}

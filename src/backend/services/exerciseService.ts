@@ -1,7 +1,7 @@
 /** Exercise service - business logic for creating, updating, and archiving exercises. */
 import type * as SQLite from 'expo-sqlite';
 import * as exerciseModel from '@backend/models/exercise';
-import type { Exercise, ExerciseCategory, Equipment, MuscleGroup } from '@shared/types/exercise';
+import type { Exercise, ExerciseCategory, ExerciseTrackingType, Equipment, MuscleGroup } from '@shared/types/exercise';
 
 export async function updateDefaultRestSeconds(
   db: SQLite.SQLiteDatabase,
@@ -20,6 +20,7 @@ export async function createExercise(
     equipment: Equipment;
     instructions?: string | null;
     restSeconds?: number | null;
+    trackingType?: ExerciseTrackingType;
   }
 ): Promise<Exercise> {
   return exerciseModel.create(db, data);
@@ -35,6 +36,7 @@ export async function updateExercise(
     equipment?: Equipment;
     instructions?: string | null;
     restSeconds?: number | null;
+    trackingType?: ExerciseTrackingType;
   }
 ): Promise<Exercise> {
   return exerciseModel.update(db, id, data);

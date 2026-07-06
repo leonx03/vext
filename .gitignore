@@ -35,6 +35,9 @@ yarn-error.*
 .omc/
 *.pem
 
+# Claude Code — keep shared skills, ignore machine-local settings
+.claude/settings.local.json
+
 # local env files
 .env*.local
 

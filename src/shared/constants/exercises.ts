@@ -1,5 +1,5 @@
 /** Default exercises - seed data for the built-in exercise library. */
-import { ExerciseCategory, MuscleGroup, Equipment, type ExerciseSeed } from '@shared/types/exercise';
+import { ExerciseCategory, ExerciseTrackingType, MuscleGroup, Equipment, type ExerciseSeed } from '@shared/types/exercise';
 
 export const SEED_EXERCISES: ExerciseSeed[] = [
   // === CHEST (Strength) ===
@@ -14,7 +14,7 @@ export const SEED_EXERCISES: ExerciseSeed[] = [
   // === BACK (Strength) ===
   { name: 'Barbell Deadlift', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back, MuscleGroup.Hamstrings, MuscleGroup.Glutes], equipment: Equipment.Barbell, instructions: 'Stand with feet hip-width, grip bar, drive through heels, extend hips and knees.' },
   { name: 'Barbell Bent-Over Row', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Barbell, instructions: 'Hinge at hips, grip bar, pull to lower chest, lower with control.' },
-  { name: 'Pull-Up', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Bodyweight, instructions: 'Hang from bar, pull chin above bar, lower with control.' },
+  { name: 'Pull-Up', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Bodyweight, instructions: 'Hang from bar, pull chin above bar, lower with control.', trackingType: ExerciseTrackingType.Bodyweight },
   { name: 'Lat Pulldown', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Cable, instructions: 'Grip wide bar, pull down to upper chest, squeeze shoulder blades together.' },
   { name: 'Seated Cable Row', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Cable, instructions: 'Sit upright, pull handle to torso, squeeze shoulder blades, return slowly.' },
   { name: 'Dumbbell Single-Arm Row', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Dumbbell, instructions: 'One knee on bench, pull dumbbell to hip, lower with control.' },
@@ -59,7 +59,7 @@ export const SEED_EXERCISES: ExerciseSeed[] = [
   { name: 'Seated Calf Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Calves], equipment: Equipment.Machine, instructions: 'Sit in machine, rise up on toes, lower slowly.' },
 
   // === CORE (Strength) ===
-  { name: 'Plank', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.Bodyweight, instructions: 'Forearms and toes on ground, keep body straight, hold position.' },
+  { name: 'Plank', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.Bodyweight, instructions: 'Forearms and toes on ground, keep body straight, hold position.', trackingType: ExerciseTrackingType.Time },
   { name: 'Hanging Leg Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.Bodyweight, instructions: 'Hang from bar, raise legs to parallel or higher, lower with control.' },
   { name: 'Cable Crunch', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.Cable, instructions: 'Kneel facing cable, hold rope behind head, crunch down contracting abs.' },
   { name: 'Ab Wheel Rollout', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.None, instructions: 'Kneel with ab wheel, roll forward extending body, pull back using core.' },
@@ -78,10 +78,10 @@ export const SEED_EXERCISES: ExerciseSeed[] = [
   { name: 'Cat-Cow Stretch', category: ExerciseCategory.Flexibility, primaryMuscles: [MuscleGroup.Back, MuscleGroup.Core], equipment: Equipment.None, instructions: 'On hands and knees, alternate between arching back (cow) and rounding back (cat).' },
 
   // === ADDITIONS FOR DEFAULT SPLIT (Revival 4-Day Upper/Lower) ===
-  { name: 'Chin-Up', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back, MuscleGroup.Biceps], equipment: Equipment.Bodyweight, instructions: 'Hang with palms facing you, pull chin above the bar, lower with control.' },
+  { name: 'Chin-Up', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back, MuscleGroup.Biceps], equipment: Equipment.Bodyweight, instructions: 'Hang with palms facing you, pull chin above the bar, lower with control.', trackingType: ExerciseTrackingType.Bodyweight },
   { name: 'Incline Dumbbell Press', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Chest], equipment: Equipment.Dumbbell, instructions: 'Set bench to 30-45 degrees. Lower dumbbells to upper chest, press up.' },
   { name: 'Pec Deck', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Chest], equipment: Equipment.Machine, instructions: 'Sit with handles at mid-chest height, bring arms together in front, return slowly.' },
-  { name: 'Side Plank', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.Bodyweight, instructions: 'On one forearm, feet stacked, hold body in a straight line. Can be static or dynamic (hip up and down).' },
+  { name: 'Side Plank', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Core], equipment: Equipment.Bodyweight, instructions: 'On one forearm, feet stacked, hold body in a straight line. Can be static or dynamic (hip up and down).', trackingType: ExerciseTrackingType.Time },
   { name: 'Inverted Row', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Back], equipment: Equipment.Bodyweight, instructions: 'Hang under a bar (rack, Smith, or TRX), body straight, pull chest to bar, lower with control.' },
   { name: 'Preacher Curl', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.Biceps], equipment: Equipment.Machine, instructions: 'Arms over the preacher pad, curl up, extend fully without using momentum.' },
   { name: 'Cable Lateral Raise', category: ExerciseCategory.Strength, primaryMuscles: [MuscleGroup.SideDelt], equipment: Equipment.Cable, instructions: 'Stand side-on to a low cable, raise the handle out to shoulder height, lower slowly.' },

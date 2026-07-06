@@ -10,7 +10,7 @@ import { useRepeatWorkout, useDeleteWorkout, useDeleteWorkouts, useContinueWorko
 import { useGymGate } from '@frontend/hooks/useGymGate';
 import { useAllGyms } from '@frontend/hooks/useGyms';
 import { useRouter } from 'expo-router';
-import { formatDate, formatDuration, parseUTCTimestamp } from '@shared/utils/formatting';
+import { formatDate, formatDuration, parseUTCTimestamp, formatSetSummary } from '@shared/utils/formatting';
 import { cn } from '@frontend/lib/utils';
 import type { WorkoutSummary, WorkoutGroup, WorkoutExerciseFull } from '@shared/types/workout';
 
@@ -407,11 +407,7 @@ export default function WorkoutsScreen() {
                                         <Text className="text-[10px] font-bold text-foreground-subtle">{set.setNumber}</Text>
                                       </View>
                                       <Text className="text-sm text-foreground-muted">
-                                        {set.weightKg != null && set.reps != null
-                                          ? `${set.weightKg} kg × ${set.reps} reps`
-                                          : set.durationSeconds != null
-                                            ? `${set.durationSeconds}s${set.distanceMeters != null ? ` · ${set.distanceMeters}m` : ''}`
-                                            : '—'}
+                                        {formatSetSummary(set)}
                                       </Text>
                                     </View>
                                   ))}
@@ -445,11 +441,7 @@ export default function WorkoutsScreen() {
                                           const set = ge.sets[roundIndex];
                                           return (
                                             <Text key={ge.id} className="text-xs text-foreground-subtle py-0.5">
-                                              {set && set.weightKg != null && set.reps != null
-                                                ? `${set.weightKg} kg × ${set.reps}`
-                                                : set && set.durationSeconds != null
-                                                  ? `${set.durationSeconds}s${set.distanceMeters != null ? ` · ${set.distanceMeters}m` : ''}`
-                                                  : '—'}
+                                              {set ? formatSetSummary(set) : '—'}
                                             </Text>
                                           );
                                         })}

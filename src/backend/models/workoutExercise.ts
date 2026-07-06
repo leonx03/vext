@@ -5,6 +5,7 @@ import {
   WorkoutExercise,
   WorkoutExerciseFull,
 } from '@shared/types/workout';
+import { ExerciseTrackingType } from '@shared/types/exercise';
 
 interface WorkoutExerciseRow {
   id: string;
@@ -25,6 +26,7 @@ interface WorkoutExerciseRow {
 interface WorkoutExerciseFullRow extends WorkoutExerciseRow {
   exercise_name: string;
   exercise_category: string;
+  exercise_tracking_type: string;
   note_text: string | null;
 }
 
@@ -51,6 +53,7 @@ function mapFullRow(row: WorkoutExerciseFullRow): WorkoutExerciseFull {
     ...mapRow(row),
     exerciseName: row.exercise_name,
     exerciseCategory: row.exercise_category,
+    trackingType: (row.exercise_tracking_type as ExerciseTrackingType) ?? ExerciseTrackingType.Weighted,
     note: row.note_text ?? null,
     sets: [],
   };
@@ -109,6 +112,7 @@ export async function getByWorkout(
        we.*,
        e.name  AS exercise_name,
        e.category AS exercise_category,
+       e.tracking_type AS exercise_tracking_type,
        eon.notes AS note_text
      FROM workout_exercises we
      JOIN exercises e ON e.id = we.exercise_id
@@ -230,6 +234,7 @@ export async function getBySuperset(
        we.*,
        e.name AS exercise_name,
        e.category AS exercise_category,
+       e.tracking_type AS exercise_tracking_type,
        eon.notes AS note_text
      FROM workout_exercises we
      JOIN exercises e ON e.id = we.exercise_id

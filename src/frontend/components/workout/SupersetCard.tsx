@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SetRow } from './SetRow';
+import { getSetInputMode, isSetComplete, getSetLoad } from './setInputMode';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import { SupersetAlternativesModal } from './SupersetAlternativesModal';
 import type { WorkoutExerciseFull, WorkoutSet, SupersetGroup } from '@shared/types/workout';
+import type { WorkoutSetInput } from '@backend/models/workoutSet';
 
 function parseRepRange(input: string): { min: number | null; max: number | null } {
   const trimmed = input.trim();
@@ -30,14 +32,14 @@ type SupersetCardProps = {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onAddRound: () => void;
-  onSaveSet: (setId: string, data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
+  onSaveSet: (setId: string, data: WorkoutSetInput) => void;
   onRemoveSet: (setId: string) => void;
   onRemoveExercise: (workoutExerciseId: string) => void;
   onAddExercise: () => void;
   onDisband: () => void;
   onUpdateRestSeconds: (seconds: number) => void;
   onUpdateTargetReps: (workoutExerciseId: string, min: number | null, max: number | null) => void;
-  onLogSet: (workoutExerciseId: string, data: { weightKg?: number; reps?: number; durationSeconds?: number; distanceMeters?: number }) => void;
+  onLogSet: (workoutExerciseId: string, data: WorkoutSetInput) => void;
   onStartRest: () => void;
   seriesId?: string | null;
   onSwitchToAlternative?: (workoutExerciseId: string, newExerciseId: string) => void;
@@ -100,12 +102,10 @@ export const SupersetCard = React.memo(function SupersetCard({
   // Auto-collapse once when all rounds are fully filled in
   useEffect(() => {
     if (hasAutoCollapsed || numRounds === 0) return;
-    const allDone = exercises.every((ex) =>
-      ex.sets.length === numRounds &&
-      ex.sets.every((s) =>
-        isStrength ? s.weightKg != null && s.reps != null : s.durationSeconds != null
-      )
-    );
+    const allDone = exercises.every((ex) => {
+      const exMode = getSetInputMode(isStrength, ex.trackingType);
+      return ex.sets.length === numRounds && ex.sets.every((s) => isSetComplete(exMode, s));
+    });
     if (allDone) {
       setIsCollapsed(true);
       setHasAutoCollapsed(true);
@@ -222,18 +222,20 @@ export const SupersetCard = React.memo(function SupersetCard({
           {exercises.map((ex) => {
             const set = ex.sets[roundIndex];
             const firstPreviousSet = previousSetsMap.get(ex.exerciseId)?.[0];
+            const exMode = getSetInputMode(isStrength, ex.trackingType);
+            const lastText = firstPreviousSet
+              ? exMode === 'weighted'
+                ? ` - last: ${firstPreviousSet.weightKg ?? 0}kg × ${firstPreviousSet.reps ?? 0}`
+                : exMode === 'bodyweight'
+                  ? ` - last: ${getSetLoad(firstPreviousSet) ?? 'bw'} × ${firstPreviousSet.reps ?? 0}`
+                  : ` - last: ${firstPreviousSet.durationSeconds ?? 0}s${firstPreviousSet.distanceMeters != null ? ` · ${firstPreviousSet.distanceMeters}m` : ''}`
+              : null;
 
             return (
               <View key={ex.id}>
                 <Text className="text-xs font-medium text-foreground-muted mb-0.5">
                   {ex.exerciseName}
-                  {firstPreviousSet ? (
-                    <Text className="text-foreground-subtle">
-                      {isStrength
-                        ? ` - last: ${firstPreviousSet.weightKg ?? 0}kg × ${firstPreviousSet.reps ?? 0}`
-                        : ` - last: ${firstPreviousSet.durationSeconds ?? 0}s${firstPreviousSet.distanceMeters != null ? ` · ${firstPreviousSet.distanceMeters}m` : ''}`}
-                    </Text>
-                  ) : null}
+                  {lastText ? <Text className="text-foreground-subtle">{lastText}</Text> : null}
                 </Text>
                 {ex.note ? (
                   <Text className="text-xs italic text-foreground-subtle mb-0.5">{ex.note}</Text>
@@ -243,7 +245,7 @@ export const SupersetCard = React.memo(function SupersetCard({
                   <SetRow
                     set={set}
                     setNumber={set.setNumber}
-                    isStrength={isStrength}
+                    mode={exMode}
                     targetRepsMin={ex.targetRepsMin}
                     targetRepsMax={ex.targetRepsMax}
                     restSeconds={0}
@@ -253,7 +255,7 @@ export const SupersetCard = React.memo(function SupersetCard({
                 ) : (
                   <SetRow
                     setNumber={roundIndex + 1}
-                    isStrength={isStrength}
+                    mode={exMode}
                     targetRepsMin={ex.targetRepsMin}
                     targetRepsMax={ex.targetRepsMax}
                     restSeconds={0}

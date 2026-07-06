@@ -43,7 +43,7 @@ function DayTemplate({ seriesId, seriesName }: { seriesId: string; seriesName: s
           <View className="flex-row items-center justify-between">
             <Text className="flex-1 text-sm font-semibold text-foreground">{ex.exerciseName}</Text>
             <Text className="text-xs font-medium text-primary">
-              {formatPrescription(ex.targetSets, ex.targetRepsMin, ex.targetRepsMax, ex.repGoalType)}
+              {formatPrescription(ex.targetSets, ex.targetRepsMin, ex.targetRepsMax, ex.repGoalType, ex.trackingType)}
             </Text>
           </View>
           <Text className="mt-0.5 text-xs text-foreground-subtle">Rest {formatRestShort(ex.restSeconds)}</Text>

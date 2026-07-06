@@ -5,6 +5,7 @@ import * as splitModel from '@backend/models/split';
 import * as splitDayModel from '@backend/models/splitDay';
 import * as scheduledWorkoutModel from '@backend/models/scheduledWorkout';
 import type { Split, SplitDayType, SplitFull, SeriesTemplate, SeriesTemplateExercise } from '@shared/types/split';
+import { ExerciseTrackingType } from '@shared/types/exercise';
 
 export async function getSplits(db: SQLite.SQLiteDatabase): Promise<Split[]> {
   return splitModel.getAll(db);
@@ -142,6 +143,7 @@ interface TemplateSlotRow {
   target_reps_min: number | null;
   target_reps_max: number | null;
   rep_goal_type: string;
+  tracking_type: string;
   notes: string | null;
 }
 
@@ -162,7 +164,7 @@ export async function getSeriesTemplate(
   seriesName: string
 ): Promise<SeriesTemplate> {
   const slots = await db.getAllAsync<TemplateSlotRow>(
-    `SELECT s.id AS slot_id, eo.exercise_id, e.name AS exercise_name,
+    `SELECT s.id AS slot_id, eo.exercise_id, e.name AS exercise_name, e.tracking_type,
             eo.rest_seconds, eo.target_sets, eo.target_reps_min, eo.target_reps_max,
             eo.rep_goal_type, n.notes AS notes
      FROM exercise_slots s
@@ -199,6 +201,7 @@ export async function getSeriesTemplate(
     targetRepsMin: s.target_reps_min,
     targetRepsMax: s.target_reps_max,
     repGoalType: (s.rep_goal_type as 'range' | 'amrap') ?? 'range',
+    trackingType: (s.tracking_type as ExerciseTrackingType) ?? ExerciseTrackingType.Weighted,
     note: s.notes,
     alternatives: altsBySlot.get(s.slot_id) ?? [],
   }));
