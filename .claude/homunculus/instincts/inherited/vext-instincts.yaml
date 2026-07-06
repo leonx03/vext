@@ -1,0 +1,454 @@
+# Instincts generated from https://github.com/leonx03/vext
+# Generated: 2026-07-06T18:15:43.090Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: vext-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: test, chore, docs
+
+## Evidence
+
+- 6 commits analyzed
+- Detected conventional commit pattern
+- Examples: chore(e2e): bootstrap Maestro harness + release-APK runner, test(e2e): add Flow A tab-smoke
+
+---
+id: vext-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Commit Length
+
+## Action
+
+Keep commit messages concise (~48 characters)
+
+## Evidence
+
+- Average commit message length: 48 chars
+- Based on 6 commits
+
+---
+id: vext-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Naming Files
+
+## Action
+
+Use kebab-case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: kebab-case
+
+---
+id: vext-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: vext-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: vext-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: vext-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~25x per month
+- Files: 
+
+---
+id: vext-workflow-add-new-e2e-test-flow
+trigger: "when doing add new e2e test flow"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Workflow Add New E2e Test Flow
+
+## Action
+
+Follow the add-new-e2e-test-flow workflow:
+1. Create a new flow YAML file in .maestro/flows/ (e.g., a-tab-smoke.yaml, b-create-exercise.yaml, c-existing-data.yaml)
+2. Optionally create or update subflow YAMLs in .maestro/subflows/ for reusable steps
+3. Document the new flow and its coverage in e2e/README.md
+4. Run the E2E runner to verify the new flow passes
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: .maestro/flows/*.yaml, .maestro/subflows/*.yaml, e2e/README.md
+
+---
+id: vext-workflow-update-e2e-documentation-and-scripts
+trigger: "when doing update e2e documentation and scripts"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/leonx03/vext
+---
+
+# Vext Workflow Update E2e Documentation And Scripts
+
+## Action
+
+Follow the update-e2e-documentation-and-scripts workflow:
+1. Edit e2e/README.md to add flow tables, setup, or runbook updates
+2. Update or add scripts in e2e/run-e2e.sh or package.json to wire up E2E commands
+3. Add or update research and planning docs in docs/ or .claude/plans/
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: e2e/README.md, e2e/run-e2e.sh, package.json
+
+---
+id: vext-instinct-file-naming
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct File Naming
+
+## Action
+
+Use kebab-case for file names (e.g., my-component.ts)
+
+## Evidence
+
+- Pattern in namingConventions.files
+- All .maestro/flows/*.yaml and .maestro/subflows/*.yaml use kebab-case
+
+---
+id: vext-instinct-function-naming
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Function Naming
+
+## Action
+
+Use camelCase for function names (e.g., runTestFlow)
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: vext-instinct-class-naming
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Class Naming
+
+## Action
+
+Use PascalCase for class names (e.g., TestRunner)
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: vext-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names (e.g., MAX_RETRIES)
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: vext-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Import Style
+
+## Action
+
+Use relative import paths (e.g., import { X } from './module')
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: vext-instinct-export-style
+trigger: "When exporting from a module"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Export Style
+
+## Action
+
+Use named exports (e.g., export { MyComponent })
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: vext-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Test Location
+
+## Action
+
+Place E2E test flows in .maestro/flows/ and reusable steps in .maestro/subflows/
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation: separate
+- Workflow 'add-new-e2e-test-flow'
+
+---
+id: vext-instinct-test-docs
+trigger: "When adding a new E2E test flow"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Test Docs
+
+## Action
+
+Document the new flow and its coverage in e2e/README.md
+
+## Evidence
+
+- Workflow 'add-new-e2e-test-flow'
+- Files involved: e2e/README.md
+
+---
+id: vext-instinct-test-verification
+trigger: "When a new E2E test flow is added"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Test Verification
+
+## Action
+
+Run the E2E runner to verify the new flow passes
+
+## Evidence
+
+- Workflow 'add-new-e2e-test-flow'
+- Step: Run the E2E runner to verify the new flow passes
+
+---
+id: vext-instinct-git-commit-prefix
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Git Commit Prefix
+
+## Action
+
+Use a conventional commit prefix: test, chore, or docs (e.g., test(e2e): ...)
+
+## Evidence
+
+- Pattern in commits.prefixes
+- Examples: 'test(e2e): ...', 'chore(e2e): ...', 'docs(e2e): ...'
+
+---
+id: vext-instinct-git-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Git Commit Length
+
+## Action
+
+Keep commit messages concise, around 48 characters on average
+
+## Evidence
+
+- Pattern in commits.averageLength: 48
+
+---
+id: vext-instinct-add-new-e2e-test-flow
+trigger: "When someone wants to add a new end-to-end test scenario using Maestro"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Add New E2e Test Flow
+
+## Action
+
+Create a new flow YAML in .maestro/flows/, update subflows if needed, document in e2e/README.md, and verify with E2E runner
+
+## Evidence
+
+- Workflow 'add-new-e2e-test-flow'
+- Files: .maestro/flows/*.yaml, .maestro/subflows/*.yaml, e2e/README.md
+
+---
+id: vext-instinct-update-e2e-docs-scripts
+trigger: "When new E2E flows are added, runner changes, or research/decisions are documented"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: leonx03/vext
+---
+
+# Vext Instinct Update E2e Docs Scripts
+
+## Action
+
+Update e2e/README.md, e2e/run-e2e.sh, package.json, and docs/e2e-research.md as needed
+
+## Evidence
+
+- Workflow 'update-e2e-documentation-and-scripts'
+- Files: e2e/README.md, e2e/run-e2e.sh, package.json, docs/e2e-research.md, .claude/plans/*.md
+
