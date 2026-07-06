@@ -1,0 +1,8 @@
+appId: com.anonymous.vext.development
+---
+# Reusable clean baseline for the deterministic flows (A, B).
+# clearState wipes the app's data dir (including files/SQLite/vext.db), so the
+# next launch re-runs migrations and re-seeds the default exercises against a
+# fresh DB. This is what makes "create exercise" repeatable on rerun.
+- launchApp:
+    clearState: true
