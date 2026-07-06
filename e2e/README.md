@@ -55,8 +55,8 @@ subflows are not run standalone) and the a/b/c filename order is the run order.
 | Flow | State | What it proves |
 |------|-------|----------------|
 | `a-tab-smoke` | clearState | Every bottom tab opens and renders its signature content. |
-| `b-create-exercise` | clearState | _(added in a later task)_ |
-| `c-existing-data` | warm DB (no clearState) | _(added in a later task)_ |
+| `b-create-exercise` | clearState | Maestro can type into the RN full-screen `<Modal>` (name field), pick category/tracking, save, and the new exercise appears in the list. Proves the modal-text-entry go/no-go by UI typing (no SQL-seed fallback needed). |
+| `c-existing-data` | warm DB (no clearState) | Runs after `b`: prior data survives a warm launch (the created exercise is still listed) and a fresh write over the populated DB succeeds (logs a body weight on Profile). |
 
 ## Reading results
 
