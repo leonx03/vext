@@ -209,3 +209,11 @@ export async function updateName(
 ): Promise<void> {
   await db.runAsync(`UPDATE workouts SET name = ? WHERE id = ?`, name, id);
 }
+
+export async function updateGym(
+  db: SQLite.SQLiteDatabase,
+  id: string,
+  gymId: string | null
+): Promise<void> {
+  await db.runAsync(`UPDATE workouts SET gym_id = ? WHERE id = ?`, gymId ?? null, id);
+}

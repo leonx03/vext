@@ -337,6 +337,22 @@ export function useUpdateWorkoutName() {
   });
 }
 
+export function useSetWorkoutGym() {
+  const db = useDatabase();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workoutId, gymId }: { workoutId: string; gymId: string | null }) =>
+      workoutService.setWorkoutGym(db, workoutId, gymId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workoutHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutHistoryByDate'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutGroupDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutsByMonth'] });
+      queryClient.invalidateQueries({ queryKey: ['recentWorkouts'] });
+    },
+  });
+}
+
 export function useMoveSeriesUp() {
   const db = useDatabase();
   const queryClient = useQueryClient();
