@@ -3,7 +3,7 @@
     "name": "Vext Dev",
     "slug": "vext",
     "scheme": "vext",
-    "version": "1.11.0",
+    "version": "1.11.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
