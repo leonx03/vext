@@ -31,6 +31,11 @@ export default function MealsScreen() {
 
   const { data: editingMeal } = useSavedMeal(editingId);
 
+  const openEditor = (id: string | null) => {
+    setEditingId(id);
+    setComposerOpen(true);
+  };
+
   const handleSave = (input: SavedMealInput) => {
     if (editingId) updateMeal.mutate({ id: editingId, input });
     else createMeal.mutate(input);
@@ -45,13 +50,7 @@ export default function MealsScreen() {
           <Text className="text-base text-foreground-muted">Back</Text>
         </Pressable>
         <Text className="text-lg font-bold text-foreground">Saved Meals</Text>
-        <Pressable
-          onPress={() => {
-            setEditingId(null);
-            setComposerOpen(true);
-          }}
-          className="py-1"
-        >
+        <Pressable onPress={() => openEditor(null)} className="py-1">
           <Ionicons name="add" size={24} color="rgb(52, 211, 153)" />
         </Pressable>
       </View>
@@ -67,13 +66,7 @@ export default function MealsScreen() {
         }
         renderItem={({ item }) => (
           <View className="flex-row items-center justify-between rounded-xl bg-background-50 px-4 py-3 mb-2">
-            <Pressable
-              className="flex-1 pr-3"
-              onPress={() => {
-                setEditingId(item.id);
-                setComposerOpen(true);
-              }}
-            >
+            <Pressable className="flex-1 pr-3" onPress={() => openEditor(item.id)}>
               <View className="flex-row items-center gap-2">
                 <Text className="text-base text-foreground">{item.name}</Text>
                 <View className="rounded bg-background-100 px-1.5 py-0.5">
@@ -88,9 +81,24 @@ export default function MealsScreen() {
                 {formatGrams(item.totals.carbsG)} · F {formatGrams(item.totals.fatG)}
               </Text>
             </Pressable>
-            <Pressable onPress={() => setArchiveTarget(item)} className="p-1.5">
-              <Ionicons name="trash-outline" size={16} color="rgb(163, 163, 163)" />
-            </Pressable>
+            <View className="flex-row items-center">
+              <Pressable
+                onPress={() => openEditor(item.id)}
+                hitSlop={6}
+                className="p-1.5"
+                accessibilityLabel={`Edit ${item.name}`}
+              >
+                <Ionicons name="create-outline" size={18} color="rgb(52, 211, 153)" />
+              </Pressable>
+              <Pressable
+                onPress={() => setArchiveTarget(item)}
+                hitSlop={6}
+                className="p-1.5"
+                accessibilityLabel={`Remove ${item.name}`}
+              >
+                <Ionicons name="trash-outline" size={16} color="rgb(163, 163, 163)" />
+              </Pressable>
+            </View>
           </View>
         )}
       />

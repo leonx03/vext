@@ -1,4 +1,4 @@
-/** WeeklyAverages - the current week's average body weight (with week-over-week delta) plus recent weeks. */
+/** WeeklyAverages - the average body weight for a single week (selected or most recent) with a week-over-week delta. */
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,14 +9,24 @@ import type { UnitSystem } from '@shared/types/settings';
 type WeeklyAveragesProps = {
   weeks: WeeklyAverageWeight[]; // most recent week first
   units: UnitSystem;
+  /**
+   * Monday-anchored week to display (matches `weekStart`). When omitted, the most recent week
+   * with entries is shown. When set but that week has no entries, an empty state is shown.
+   */
+  selectedWeekStart?: string;
 };
 
-export function WeeklyAverages({ weeks, units }: WeeklyAveragesProps) {
-  if (weeks.length === 0) return null;
+export function WeeklyAverages({ weeks, units, selectedWeekStart }: WeeklyAveragesProps) {
+  const idx = selectedWeekStart
+    ? weeks.findIndex((w) => w.weekStart === selectedWeekStart)
+    : weeks.length > 0
+      ? 0
+      : -1;
+  const current = idx >= 0 ? weeks[idx] : null;
+  // The next entry in the (descending) list is the most recent week before `current` with entries.
+  const previous = idx >= 0 ? weeks[idx + 1] : undefined;
 
-  const [latest, ...rest] = weeks;
-  const previous = rest[0];
-  const deltaKg = previous ? latest.avgWeightKg - previous.avgWeightKg : null;
+  const deltaKg = current && previous ? current.avgWeightKg - previous.avgWeightKg : null;
   // A change under 0.05 kg rounds to "0.0" at one decimal — treat it as flat.
   const isFlat = deltaKg != null && Math.abs(deltaKg) < 0.05;
 
@@ -24,42 +34,31 @@ export function WeeklyAverages({ weeks, units }: WeeklyAveragesProps) {
     <View>
       <Text className="text-xs font-medium text-foreground-muted mb-2">Weekly average</Text>
 
-      {/* Current (latest) week headline + week-over-week change */}
-      <View className="flex-row items-end justify-between">
-        <View>
-          <Text className="text-xs text-foreground-subtle">{formatWeekRange(latest.weekStart)}</Text>
-          <Text className="text-2xl font-bold text-foreground">{formatWeight(latest.avgWeightKg, units)}</Text>
-          <Text className="text-xs text-foreground-subtle">
-            {latest.entryCount} {latest.entryCount === 1 ? 'entry' : 'entries'}
-          </Text>
-        </View>
-
-        {deltaKg != null && (
-          <View className="flex-row items-center gap-1">
-            <Ionicons
-              name={isFlat ? 'remove' : deltaKg > 0 ? 'arrow-up' : 'arrow-down'}
-              size={14}
-              color="rgb(163, 163, 163)"
-            />
-            <Text className="text-sm text-foreground-muted">
-              {isFlat ? 'No change' : `${formatWeight(Math.abs(deltaKg), units)} vs last`}
+      {current ? (
+        <View className="flex-row items-end justify-between">
+          <View>
+            <Text className="text-xs text-foreground-subtle">{formatWeekRange(current.weekStart)}</Text>
+            <Text className="text-2xl font-bold text-foreground">{formatWeight(current.avgWeightKg, units)}</Text>
+            <Text className="text-xs text-foreground-subtle">
+              {current.entryCount} {current.entryCount === 1 ? 'entry' : 'entries'}
             </Text>
           </View>
-        )}
-      </View>
 
-      {/* Prior weeks, each with its own average */}
-      {rest.length > 0 && (
-        <View className="mt-3 gap-1.5">
-          {rest.map((week) => (
-            <View key={week.weekStart} className="flex-row items-center justify-between">
-              <Text className="text-sm text-foreground">{formatWeekRange(week.weekStart)}</Text>
-              <Text className="text-sm font-semibold text-foreground">
-                {formatWeight(week.avgWeightKg, units)}
+          {deltaKg != null && (
+            <View className="flex-row items-center gap-1">
+              <Ionicons
+                name={isFlat ? 'remove' : deltaKg > 0 ? 'arrow-up' : 'arrow-down'}
+                size={14}
+                color="rgb(163, 163, 163)"
+              />
+              <Text className="text-sm text-foreground-muted">
+                {isFlat ? 'No change' : `${formatWeight(Math.abs(deltaKg), units)} vs prior week`}
               </Text>
             </View>
-          ))}
+          )}
         </View>
+      ) : (
+        <Text className="text-sm text-foreground-muted">No entries this week</Text>
       )}
     </View>
   );

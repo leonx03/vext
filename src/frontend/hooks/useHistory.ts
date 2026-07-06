@@ -22,6 +22,24 @@ export function useWorkoutHistory() {
   });
 }
 
+/** Flat, purely chronological history (all completed sessions, newest done first). */
+export function useWorkoutHistoryByDate() {
+  const db = useDatabase();
+  const pageSize = APP_CONFIG.defaults.historyPageSize;
+
+  return useInfiniteQuery({
+    queryKey: ['workoutHistoryByDate'],
+    queryFn: ({ pageParam = 0 }) =>
+      workoutService.getWorkoutSummaries(db, pageSize, pageParam, 'date'),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < pageSize) return undefined;
+      return allPages.length * pageSize;
+    },
+    initialPageParam: 0,
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useWorkoutHistoryCount() {
   const db = useDatabase();
   return useQuery({

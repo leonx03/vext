@@ -66,7 +66,8 @@ export default function HomeScreen() {
   });
 
   const { data: weightTrend } = useBodyWeightTrend(30);
-  const { data: weeklyAverages } = useBodyWeightWeeklyAverages(8);
+  // All weeks (not just the latest 8) so navigating the selector back far still resolves an average.
+  const { data: weeklyAverages } = useBodyWeightWeeklyAverages();
 
   const { data: weeklyPRCount } = useQuery({
     queryKey: ['weeklyPRCount', weekOffset],
@@ -168,7 +169,7 @@ export default function HomeScreen() {
             <WeightSparkline entries={weightTrend} units={units} />
             {weeklyAverages && weeklyAverages.length > 0 && (
               <View className="mt-4 border-t border-background-100 pt-4">
-                <WeeklyAverages weeks={weeklyAverages} units={units} />
+                <WeeklyAverages weeks={weeklyAverages} units={units} selectedWeekStart={weekStart} />
               </View>
             )}
           </View>

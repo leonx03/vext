@@ -33,8 +33,12 @@ export function MealComposerSheet({ visible, meal, foods, onSave, onClose }: Mea
   const [fat, setFat] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [editQty, setEditQty] = useState('');
+  const [editQtyError, setEditQtyError] = useState<string | null>(null);
 
   const isEditing = !!meal;
+  const editingItem = editingItemIndex != null ? items[editingItemIndex] ?? null : null;
 
   useEffect(() => {
     if (!visible) return;
@@ -56,7 +60,24 @@ export function MealComposerSheet({ visible, meal, foods, onSave, onClose }: Mea
       setFat('');
     }
     setError(null);
+    setEditingItemIndex(null);
   }, [visible, meal]);
+
+  const openQtyEditor = (idx: number) => {
+    setEditQty(String(items[idx].quantity));
+    setEditQtyError(null);
+    setEditingItemIndex(idx);
+  };
+
+  const handleSaveQty = () => {
+    const q = parseNum(editQty);
+    if (!(q > 0)) {
+      setEditQtyError('Enter a valid amount');
+      return;
+    }
+    setItems((prev) => prev.map((it, i) => (i === editingItemIndex ? { ...it, quantity: q } : it)));
+    setEditingItemIndex(null);
+  };
 
   const composedTotals: Macros = useMemo(
     () =>
@@ -122,6 +143,11 @@ export function MealComposerSheet({ visible, meal, foods, onSave, onClose }: Mea
       />
     </View>
   );
+
+  const editFood = editingItem?.food ?? null;
+  const editQtyNum = parseNum(editQty);
+  const editFactor =
+    editFood && editFood.servingSize > 0 && editQtyNum > 0 ? editQtyNum / editFood.servingSize : 0;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -189,13 +215,20 @@ export function MealComposerSheet({ visible, meal, foods, onSave, onClose }: Mea
                         key={`${it.food.id}-${idx}`}
                         className="flex-row items-center justify-between rounded-xl bg-background-50 px-4 py-3"
                       >
-                        <View className="flex-1 pr-3">
-                          <Text className="text-base text-foreground">{it.food.name}</Text>
+                        <Pressable
+                          className="flex-1 pr-3"
+                          onPress={() => openQtyEditor(idx)}
+                          accessibilityLabel={`Edit amount of ${it.food.name}`}
+                        >
+                          <View className="flex-row items-center gap-1.5">
+                            <Text className="text-base text-foreground">{it.food.name}</Text>
+                            <Ionicons name="create-outline" size={13} color="rgb(115, 115, 115)" />
+                          </View>
                           <Text className="text-xs text-foreground-subtle">
                             {formatAmount(it.quantity, it.food.servingUnit)} ·{' '}
                             {formatCalories(it.food.calories * f)} · P {formatGrams(it.food.proteinG * f)}
                           </Text>
-                        </View>
+                        </Pressable>
                         <Pressable onPress={() => setItems((prev) => prev.filter((_, i) => i !== idx))} className="p-1.5">
                           <Ionicons name="close-circle" size={20} color="rgb(163, 163, 163)" />
                         </Pressable>
@@ -247,6 +280,58 @@ export function MealComposerSheet({ visible, meal, foods, onSave, onClose }: Mea
         onPick={(food, quantity) => setItems((prev) => [...prev, { food, quantity }])}
         onClose={() => setPickerOpen(false)}
       />
+
+      {/* Quantity editor for a food already in the meal */}
+      <Modal
+        visible={editingItem !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditingItemIndex(null)}
+      >
+        <Pressable className="flex-1 justify-end bg-black/60" onPress={() => setEditingItemIndex(null)}>
+          <Pressable className="rounded-t-2xl bg-background-50 px-6 pb-8 pt-5" onPress={(e) => e.stopPropagation()}>
+            {editFood && (
+              <>
+                <Text className="text-lg font-bold text-foreground">{editFood.name}</Text>
+                <Text className="text-xs text-foreground-subtle mb-4">Edit amount</Text>
+
+                <Text className="text-sm font-medium text-foreground mb-2">
+                  Amount ({editFood.servingUnit})
+                </Text>
+                <TextInput
+                  className="rounded-xl bg-background-100 px-4 py-3 text-base text-foreground"
+                  keyboardType="decimal-pad"
+                  value={editQty}
+                  onChangeText={(t) => {
+                    setEditQty(t);
+                    setEditQtyError(null);
+                  }}
+                  autoFocus
+                />
+                <View className="mt-3 flex-row gap-4">
+                  <Text className="text-sm" style={{ color: MACRO_COLORS.calories }}>
+                    {formatCalories(editFood.calories * editFactor)}
+                  </Text>
+                  <Text className="text-sm" style={{ color: MACRO_COLORS.protein }}>
+                    P {formatGrams(editFood.proteinG * editFactor)}
+                  </Text>
+                  <Text className="text-sm" style={{ color: MACRO_COLORS.carbs }}>
+                    C {formatGrams(editFood.carbsG * editFactor)}
+                  </Text>
+                  <Text className="text-sm" style={{ color: MACRO_COLORS.fat }}>
+                    F {formatGrams(editFood.fatG * editFactor)}
+                  </Text>
+                </View>
+                {editQtyError && <Text className="mt-3 text-xs text-destructive">{editQtyError}</Text>}
+
+                <Pressable onPress={handleSaveQty} className="mt-5 rounded-xl bg-primary py-3 items-center">
+                  <Text className="text-base font-semibold text-background">Save</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }

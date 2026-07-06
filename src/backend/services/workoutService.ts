@@ -353,7 +353,8 @@ export async function getFullWorkout(
 export async function getWorkoutSummaries(
   db: SQLite.SQLiteDatabase,
   limit: number,
-  offset: number
+  offset: number,
+  orderBy: 'series' | 'date' = 'series'
 ): Promise<WorkoutSummary[]> {
   type SummaryRow = {
     id: string;
@@ -394,7 +395,9 @@ export async function getWorkoutSummaries(
      LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id
      WHERE w.status = ?
      GROUP BY w.id
-     ORDER BY ws_series.sort_order DESC, ws_series.created_at DESC, w.started_at DESC
+     ${orderBy === 'date'
+       ? 'ORDER BY w.completed_at DESC, w.started_at DESC'
+       : 'ORDER BY ws_series.sort_order DESC, ws_series.created_at DESC, w.started_at DESC'}
      LIMIT ? OFFSET ?`,
     WorkoutStatus.Completed,
     limit,
@@ -584,6 +587,15 @@ export async function updateWorkoutSeriesName(
   const w = await workout.getById(db, workoutId);
   if (!w?.seriesId) throw new Error('Workout has no associated series');
   return workoutSeriesModel.updateName(db, w.seriesId, name);
+}
+
+/** Assign (or clear) the gym a completed workout was done at — lets users backfill a missed gym. */
+export async function setWorkoutGym(
+  db: SQLite.SQLiteDatabase,
+  workoutId: string,
+  gymId: string | null
+): Promise<void> {
+  return workout.updateGym(db, workoutId, gymId);
 }
 
 export async function moveSeriesUp(
