@@ -12,6 +12,7 @@ import {
   useStartScheduledWorkout,
 } from '@frontend/hooks/useScheduledWorkouts';
 import { parseUTCTimestamp, formatDuration } from '@shared/utils/formatting';
+import { useGymGate } from '@frontend/hooks/useGymGate';
 import { ConfirmDialog } from '@frontend/components/overlay/ConfirmDialog';
 import type { WorkoutSummary } from '@shared/types/workout';
 import type { ScheduledWorkout } from '@shared/types/scheduledWorkout';
@@ -51,6 +52,7 @@ export default function AgendaScreen() {
   const scheduleWorkout = useScheduleWorkout();
   const cancelScheduled = useCancelScheduledWorkout();
   const startScheduled = useStartScheduledWorkout();
+  const { gate, gymGate } = useGymGate();
 
   const isLoading = workoutsLoading || scheduledLoading;
 
@@ -95,13 +97,15 @@ export default function AgendaScreen() {
     setSelectedDate(null);
   };
 
-  const handleStartScheduled = async (s: ScheduledWorkout) => {
-    try {
-      const workout = await startScheduled.mutateAsync({ scheduledId: s.id, seriesId: s.seriesId });
-      router.replace(`/workout/${workout.id}`);
-    } catch (e) {
-      if (__DEV__) console.warn('Start scheduled workout failed:', e);
-    }
+  const handleStartScheduled = (s: ScheduledWorkout) => {
+    gate(async (gymId) => {
+      try {
+        const workout = await startScheduled.mutateAsync({ scheduledId: s.id, seriesId: s.seriesId, gymId });
+        router.replace(`/workout/${workout.id}`);
+      } catch (e) {
+        if (__DEV__) console.warn('Start scheduled workout failed:', e);
+      }
+    });
   };
 
   const handleSchedule = (seriesId: string) => {
@@ -357,6 +361,8 @@ export default function AgendaScreen() {
         }}
         onCancel={() => setCancelTarget(null)}
       />
+
+      {gymGate}
     </View>
   );
 }
