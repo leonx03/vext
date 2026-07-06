@@ -1,0 +1,38 @@
+appId: com.anonymous.vext.development
+name: b-create-exercise
+tags:
+  - modal
+---
+# Flow B - create-exercise: the RN <Modal> text-entry go/no-go.
+#
+# This is the flow that de-risks the whole approach. The manual /e2e-test flow
+# could not type into RN <Modal> TextInputs on the emulator (the soft keyboard
+# never showed and a stray BACK dismissed the modal). Maestro's inputText uses a
+# different mechanism: it DOES focus and fill the full-screen ExerciseForm modal
+# input (verified - keyboard shows, text lands, modal stays open), so this flow
+# creates an exercise entirely through the UI, no SQL seeding required.
+#
+# The created exercise ("AAA E2E Test Exercise") is named to sort first in the
+# alphabetical list so it is visible without scrolling, and is reused by Flow C
+# to prove it survives in the warm DB.
+
+- runFlow: ../subflows/launch-clean.yaml
+
+- tapOn: "Exercises"
+- assertVisible: "Cardio"
+
+# Open the create modal via the icon-only "+" (top-right; no testID -> point tap).
+- tapOn:
+    point: "91%,8%"
+- assertVisible: "New Exercise"
+
+# Type the name into the RN <Modal> TextInput (the de-risked capability).
+# The empty field shows its placeholder, which we tap to focus.
+- tapOn: "e.g. Bulgarian Split Squat"
+- inputText: "AAA E2E Test Exercise"
+
+# Leave the defaults (Category: Strength, Tracking: Weight x reps) and save.
+- tapOn: "Save"
+
+# Back on the list: the new exercise (sorts first) is present.
+- assertVisible: "AAA E2E Test Exercise"
