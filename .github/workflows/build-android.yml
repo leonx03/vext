@@ -1,17 +1,16 @@
 name: Build Android APK
 
-# Triggers:
-#   - Push to master           → staging build (release-signed APK)
-#   - Manual workflow_dispatch → staging build (release-signed APK)
-#   - Push a tag like v1.0.0  → production build (release-signed APK + GitHub Release)
-#   - "/build" comment on PR  → test build (debug-signed APK)
+# DISABLED 2026-07-07 — vext CI + release moved to the monorepo
+# (leonx03/apps-monorepo → .github/workflows/vext-build.yml). Reduced to workflow_dispatch-only +
+# `if: false` on the job so nothing fires here automatically (never let two pipelines build the same
+# app). To reactivate: restore the push/tags/issue_comment triggers and remove `if: false` below.
+#
+# Original triggers (for reference / rollback):
+#   push: { branches: [master], tags: ['v*'] }
+#   workflow_dispatch: {}
+#   issue_comment: { types: [created] }   # "/build" comment → test build
 on:
-  push:
-    branches: [master]
-    tags: ['v*']
   workflow_dispatch:
-  issue_comment:
-    types: [created]
 
 permissions: {}
 
@@ -19,10 +18,7 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    # For issue_comment: only run when "/build" is commented on a PR (not a plain issue)
-    if: |
-      github.event_name != 'issue_comment' ||
-      (github.event.issue.pull_request != null && github.event.comment.body == '/build')
+    if: false # DISABLED — vext moved to monorepo (apps-monorepo/.github/workflows/vext-build.yml)
     permissions:
       contents: write
       pull-requests: read

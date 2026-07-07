@@ -1,20 +1,18 @@
 name: PR Build (manual)
 
-# Trigger by commenting "/build" on a pull request. Only leonx03 can trigger this.
-
+# DISABLED 2026-07-07 — vext PR builds moved to the monorepo
+# (leonx03/apps-monorepo → .github/workflows/vext-pr-build.yml). Reduced to workflow_dispatch-only +
+# `if: false` so it never fires here. To reactivate: restore `issue_comment: { types: [created] }`
+# and remove `if: false` below.
 on:
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
 
 permissions: {}
 
 jobs:
   build:
     name: Build APK from PR
-    if: |
-      github.event.issue.pull_request != null &&
-      github.event.comment.user.login == 'leonx03' &&
-      startsWith(github.event.comment.body, '/build')
+    if: false # DISABLED — vext moved to monorepo (apps-monorepo/.github/workflows/vext-pr-build.yml)
     runs-on: ubuntu-latest
     permissions:
       contents: read
